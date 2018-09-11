@@ -70,7 +70,7 @@ and the weight of each individual exercise is given below.
 Testing: The code contains no tests, but you are strongly encouraged
 to write your own tests to help you develop your solution.
 
-## Exercise 1: Authentication and input sanitizing (3 points)
+## Exercise 1: Authentication and input sanitizing (4 points)
 
 Goal: When this exercise is done, the client should be able
 to successfully register and login a user.
@@ -139,7 +139,7 @@ by using prepared statements:
 
 Make changes so that this is the KeyedStorage used by Server.
 
-## Exercise 5: Using TLS (3 points)
+## Exercise 5: Using TLS (2 points)
 
 Secure the connection between client and server by using TLS.
 
