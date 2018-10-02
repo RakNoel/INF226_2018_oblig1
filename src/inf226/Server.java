@@ -28,8 +28,8 @@ public class Server {
      */
     public static Maybe<Stored<User>> authenticate(String username, String password) {
         try {
-            Stored<User> u = storage.lookup(username).force();
-            return (u.getValue().testPassword(password)) ? Maybe.just(u) : Maybe.nothing();
+            Stored<User> u = storage.lookup(validateUsername(username).force()).force();
+            return (u.getValue().testPassword(validatePassword(password).force())) ? Maybe.just(u) : Maybe.nothing();
         } catch (inf226.Maybe.NothingException ex){
             return Maybe.nothing();
         }
