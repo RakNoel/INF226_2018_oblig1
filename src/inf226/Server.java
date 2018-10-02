@@ -8,6 +8,7 @@ import inf226.Storage.TransientStorage;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Arrays;
 
 /**
  * The Server main class. This implements all critical server functions.
@@ -20,7 +21,6 @@ public class Server {
             = new TransientStorage<>(User::getName);
 
     public static Maybe<Stored<User>> authenticate(String username, String password) {
-        // TODO: Implement user authentication
         return Maybe.nothing();
     }
 
@@ -39,15 +39,24 @@ public class Server {
         return Maybe.nothing();
     }
 
+    /**
+     * Method to validate that the username is a safe string
+     * @param username Username to be sanitized
+     * @return Maybe.just(username)
+     */
     public static Maybe<String> validateUsername(String username) {
-        // TODO: Validate username before returning
-        return Maybe.just(username);
+        boolean res = username.matches("/[\\w\\d]*/gim");
+        return (res) ? Maybe.just(username) : Maybe.nothing();
     }
 
+    /**
+     * Method to validate that the password is a safe string
+     * @param pass Password to be sanitized
+     * @return Maybe.just(password)
+     */
     public static Maybe<String> validatePassword(String pass) {
-        // TODO: Validate pass before returning
-        // This method only checks that the password contains a safe string.
-        return Maybe.just(pass);
+        boolean res = pass.matches("/[\\w\\d.,:;()\\[\\]{}<>\"'#!$%&/+*?=_|-]*/gim");
+        return (res) ? Maybe.just(pass) : Maybe.nothing();
     }
 
     public static boolean sendMessage(Stored<User> sender, Message message) {
