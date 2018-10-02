@@ -20,8 +20,19 @@ public class Server {
     private static final KeyedStorage<String, User> storage
             = new TransientStorage<>(User::getName);
 
+    /**
+     * Method to authenticate a user by password
+     * @param username Username we hope to find
+     * @param password Password to test if user is found
+     * @return Maybe(User) if exist and matches password
+     */
     public static Maybe<Stored<User>> authenticate(String username, String password) {
-        return Maybe.nothing();
+        try {
+            Stored<User> u = storage.lookup(username).force();
+            return (u.getValue().testPassword(password)) ? Maybe.just(u) : Maybe.nothing();
+        } catch (inf226.Maybe.NothingException ex){
+            return Maybe.nothing();
+        }
     }
 
     public static Maybe<Stored<User>> register(String username, String password) {
