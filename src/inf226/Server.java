@@ -55,8 +55,16 @@ public class Server {
 	}
 
 	public static boolean sendMessage(Stored<User> sender, Message message) {
-		// TODO: Implement the message sending.
-		return false;
+		Maybe<Stored<User>> recipient = storage.lookup(message.recipient);
+		if(recipient.isNothing()) {
+			return false;
+		}
+		try {
+			storage.update(recipient.force(), recipient.force().getValue().addMessage(message));
+			return true;
+		} catch (Exception e) {
+			return false;
+		}
 	}
 	
 	/**

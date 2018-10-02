@@ -12,8 +12,19 @@ public class Message {
 	}
 
 	public static boolean valid(String message) {
-		// TODO: Implement message string validation.
-		return false;
+		for(char c : message.toCharArray()){
+			if(Character.isISOControl(c)){
+				return false;
+			}
+		}
+
+		String messageLines[] = message.split("\\r?\\n");
+		for(String line : messageLines){
+			if(line.equals(".")){
+				return false;
+			}
+		}
+		return true;
 	}
 
 	public static class Invalid extends Exception {

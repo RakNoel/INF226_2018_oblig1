@@ -3,6 +3,7 @@ package inf226;
 import java.io.BufferedReader;
 
 import inf226.Maybe.NothingException;
+import inf226.Storage.Id;
 import inf226.Storage.Stored;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -178,9 +179,30 @@ public final class RequestProcessor extends Thread {
 		 * @param in Reader to read the message data from.
 		 * @return Message object.
 		 */
-		private static Maybe<Message> handleMessage(String username, BufferedReader in) {
-			// TODO: Handle message input
-			return Maybe.nothing();
+		private static Maybe<Message> handleMessage(String username, BufferedReader in) throws IOException {
+			final String lineOne = Util.getLine(in);
+			final String lineTwo = Util.getLine(in);
+			final String lineThree = Util.getLine(in);
+
+			if (lineOne.startsWith("SEND MESSAGE") && lineTwo.startsWith("RECIPIENT ")) {
+				final Maybe<String> recipient = Maybe.just(lineTwo.substring("RECIPIENT ".length(), lineTwo.length()));
+				final Maybe<String> messageText = Maybe.just(lineThree);
+
+				try {
+					//TODO: get registered user
+					User user = new User(username);
+					final Maybe<Message> message = Maybe.just(new Message(user, recipient.force(), messageText.force()));
+					if (Server.sendMessage(new Stored<User>(new Id.Generator(),user), message.force())){
+						return message;
+					} else {
+						return Maybe.nothing();
+					}
+				} catch (Exception e){
+					return Maybe.nothing();
+				}
+			} else {
+				return Maybe.nothing();
+			}
 		}
 
 		/**
