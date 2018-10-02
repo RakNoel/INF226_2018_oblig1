@@ -35,9 +35,20 @@ public class Server {
         }
     }
 
+    /**
+     * Method that will add a new user if there is not already someone with that username
+     * @param username Unique username to register
+     * @param password password of said user
+     * @return Maybe(User) of the new user, depending on success.
+     */
     public static Maybe<Stored<User>> register(String username, String password) {
-        // TODO: Implement user registration
-        return Maybe.nothing();
+        try {
+            if (!storage.lookup(validateUsername(username).force()).isNothing()) return Maybe.nothing();
+            storage.save(new User(validateUsername(username).force(), validatePassword(password).force()));
+            return storage.lookup(validateUsername(username).force());
+        }catch (inf226.Maybe.NothingException | IOException ex) {
+            return Maybe.nothing();
+        }
     }
 
     public static Maybe<Token> createToken(Stored<User> user) {
