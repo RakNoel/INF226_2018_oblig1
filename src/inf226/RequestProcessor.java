@@ -258,7 +258,7 @@ public final class RequestProcessor extends Thread {
                     final UserName username = new UserName(lineOne.substring("USER ".length()));
                     final Password password = new Password(lineTwo.substring("PASS ".length()));
                     System.err.println("Login request from user: " + username);
-                    return Server.register(username, password);
+                    return Server.authenticate(username, password);
                 } catch (NothingException e) {
                     return Maybe.nothing();
                 }

@@ -55,7 +55,7 @@ public final class User {
 
 }
 
-class UserName {
+class UserName implements Comparable<UserName> {
     private final String username;
 
     UserName(String username) throws inf226.Maybe.NothingException {
@@ -69,6 +69,11 @@ class UserName {
     @Override
     public String toString() {
         return this.get();
+    }
+
+    @Override
+    public int compareTo(UserName userName) {
+        return this.toString().compareTo(username);
     }
 }
 
