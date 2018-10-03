@@ -67,7 +67,7 @@ public class Server {
      * @return Maybe.just(username)
      */
     public static Maybe<String> validateUsername(String username) {
-        boolean res = username.matches("/[\\w\\d]*/gim");
+        boolean res = username.matches("[\\w\\d]*");
         return (res) ? Maybe.just(username) : Maybe.nothing();
     }
 
@@ -77,7 +77,7 @@ public class Server {
      * @return Maybe.just(password)
      */
     public static Maybe<String> validatePassword(String pass) {
-        boolean res = pass.matches("/[\\w\\d.,:;()\\[\\]{}<>\"'#!$%&/+*?=_|-]*/gim");
+        boolean res = pass.matches("[\\w\\d.,:;()\\[\\]{}<>\"'#!$%&/+*?=_|\\-]*");
         return (res) ? Maybe.just(pass) : Maybe.nothing();
     }
 
