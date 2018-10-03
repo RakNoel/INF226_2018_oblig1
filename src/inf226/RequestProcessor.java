@@ -8,7 +8,11 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.net.InetAddress;
 import java.net.Socket;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -20,9 +24,11 @@ import java.util.concurrent.LinkedBlockingQueue;
  */
 public final class RequestProcessor extends Thread {
 	private final BlockingQueue<Request> queue;
+	private final HashMap<InetAddress, ArrayList<Timestamp>> requests;
 
 	public RequestProcessor() {
 		queue = new LinkedBlockingQueue<Request>();
+		requests = new HashMap<>();
 	}
 
 	/**
@@ -38,12 +44,32 @@ public final class RequestProcessor extends Thread {
 		try {
 			while(true) {
 				final Request request = queue.take();
-				/*
-				 * TODO: Implement mitigation against a flood
-				 * of requests from a single host by keeping
-				 * track of the number of requests per host.
-				 */
-				request.start();
+
+				InetAddress ip = request.client.getInetAddress();
+				ArrayList<Timestamp> timestamps;
+				long timeOut = 10 * 60 * 1000; //10minutes
+
+				if(requests.containsKey(ip)){
+					timestamps = requests.get(ip);
+					ArrayList<Timestamp> newTimestamps = new ArrayList<>();
+					for(Timestamp t : timestamps){
+						//keep only timestamps from the last 10 minutes
+						if(t.after(new Timestamp(System.currentTimeMillis() - timeOut))){
+							newTimestamps.add(t);
+						}
+					}
+					timestamps = newTimestamps;
+				} else {
+					timestamps = new ArrayList<>();
+				}
+
+				timestamps.add(new Timestamp(System.currentTimeMillis()));
+				requests.put(ip, timestamps);
+
+				//max 5 requests per 10 minutes
+				if(timestamps.size() <= 5){
+					request.start();
+				}
 			}
 		} catch (InterruptedException e) { 
 		}
