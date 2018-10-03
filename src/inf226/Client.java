@@ -275,7 +275,7 @@ public class Client {
 		serverOut.write("SEND MESSAGE"); serverOut.newLine();
 		serverOut.write("RECIPIENT " + recipient); serverOut.newLine();
 		serverOut.write(messageText); serverOut.newLine();
-		serverOut.write(".");
+		serverOut.write("."); serverOut.newLine();
 		serverOut.flush();
 	}
 

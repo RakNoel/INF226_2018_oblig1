@@ -211,6 +211,7 @@ public final class RequestProcessor extends Thread {
 		private static Maybe<Message> handleMessage(String username, BufferedReader in) throws IOException {
 			final String lineOne = Util.getLine(in);
 			final String lineTwo = Util.getLine(in);
+			final String dotLine = Util.getLine(in);
 
 			if (lineOne.startsWith("RECIPIENT ")) {
 				final Maybe<String> recipient = Maybe.just(lineOne.substring("RECIPIENT ".length(), lineOne.length()));
