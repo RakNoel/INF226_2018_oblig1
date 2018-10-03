@@ -7,32 +7,32 @@ package inf226;
  */
 public final class User {
 
-    private final String name;
-    private final String passwd;
+    private final UserName name;
+    private final Password passwd;
     private final ImmutableLinkedList<Message> log;
 
 
-    public User(final String name, final String passwd) {
+    public User(final UserName name, final Password passwd) {
         this.name = name;
         this.passwd = passwd;
-        this.log = new ImmutableLinkedList<Message>();
+        this.log = new ImmutableLinkedList<>();
     }
 
-    private User(final String name, final String passwd, final ImmutableLinkedList<Message> log) {
+    private User(final UserName name, final Password passwd, final ImmutableLinkedList<Message> log) {
         this.name = name;
         this.passwd = passwd;
         this.log = log;
     }
 
-    public boolean testPassword(String passwd) {
+    public boolean testPassword(Password passwd) {
         return this.passwd.equals(passwd);
     }
 
     /**
      * @return User name
      */
-    public String getName() {
-        return name;
+    public UserName getName() {
+        return this.name;
     }
 
     /**
@@ -53,4 +53,47 @@ public final class User {
         return new User(name, passwd, new ImmutableLinkedList<Message>(m, log));
     }
 
+}
+
+class UserName implements Comparable<UserName> {
+    private final String username;
+
+    UserName(String username) throws inf226.Maybe.NothingException {
+        this.username = Server.validateUsername(username).force();
+    }
+
+    public String get() {
+        return username;
+    }
+
+    @Override
+    public String toString() {
+        return this.get();
+    }
+
+    @Override
+    public int compareTo(UserName userName) {
+        return this.toString().compareTo(username);
+    }
+}
+
+class Password {
+    private final String password;
+
+    Password(String pass) throws inf226.Maybe.NothingException {
+        this.password = Server.validatePassword(pass).force();
+    }
+
+    public String get() {
+        return password;
+    }
+
+    public boolean equals(Password password) {
+        return this.get().equals(password.get());
+    }
+
+    @Override
+    public String toString() {
+        return this.get();
+    }
 }

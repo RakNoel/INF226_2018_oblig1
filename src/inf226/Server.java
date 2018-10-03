@@ -18,7 +18,7 @@ import java.util.Arrays;
  */
 public class Server {
     private static final int portNumber = 1337;
-    private static final KeyedStorage<String, User> storage
+    private static final KeyedStorage<UserName, User> storage
             = new TransientStorage<>(User::getName);
 
     /**
@@ -27,10 +27,10 @@ public class Server {
      * @param password Password to test if user is found
      * @return Maybe(User) if exist and matches password
      */
-    public static Maybe<Stored<User>> authenticate(String username, String password) {
+    public static Maybe<Stored<User>> authenticate(UserName username, Password password) {
         try {
-            Stored<User> u = storage.lookup(validateUsername(username).force()).force();
-            return (u.getValue().testPassword(validatePassword(password).force())) ? Maybe.just(u) : Maybe.nothing();
+            Stored<User> u = storage.lookup(username).force();
+            return (u.getValue().testPassword(password)) ? Maybe.just(u) : Maybe.nothing();
         } catch (inf226.Maybe.NothingException ex){
             return Maybe.nothing();
         }
@@ -42,12 +42,12 @@ public class Server {
      * @param password password of said user
      * @return Maybe(User) of the new user, depending on success.
      */
-    public static Maybe<Stored<User>> register(String username, String password) {
+    public static Maybe<Stored<User>> register(UserName username, Password password) {
         try {
-            if (!storage.lookup(validateUsername(username).force()).isNothing()) return Maybe.nothing();
-            storage.save(new User(validateUsername(username).force(), validatePassword(password).force()));
-            return storage.lookup(validateUsername(username).force());
-        }catch (inf226.Maybe.NothingException | IOException ex) {
+            if (!storage.lookup(username).isNothing()) return Maybe.nothing();
+            storage.save(new User(username, password));
+            return storage.lookup(username);
+        }catch (IOException ex) {
             return Maybe.nothing();
         }
     }
@@ -68,7 +68,7 @@ public class Server {
      * @return Maybe.just(username)
      */
     public static Maybe<String> validateUsername(String username) {
-        boolean res = username.matches("/[\\w\\d]*/gim");
+        boolean res = username.matches("[\\w\\d]*");
         return (res) ? Maybe.just(username) : Maybe.nothing();
     }
 
@@ -78,7 +78,7 @@ public class Server {
      * @return Maybe.just(password)
      */
     public static Maybe<String> validatePassword(String pass) {
-        boolean res = pass.matches("/[\\w\\d.,:;()\\[\\]{}<>\"'#!$%&/+*?=_|-]*/gim");
+        boolean res = pass.matches("[\\w\\d.,:;()\\[\\]{}<>\"'#!$%&/+*?=_|\\-]*");
         return (res) ? Maybe.just(pass) : Maybe.nothing();
     }
 
