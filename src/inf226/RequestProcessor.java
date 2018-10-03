@@ -69,6 +69,12 @@ public final class RequestProcessor extends Thread {
 				//max 5 requests per 10 minutes
 				if(timestamps.size() <= 5){
 					request.start();
+				} else {
+					try {
+						request.client.close();
+					} catch (IOException e) {
+
+					}
 				}
 			}
 		} catch (InterruptedException e) { 
