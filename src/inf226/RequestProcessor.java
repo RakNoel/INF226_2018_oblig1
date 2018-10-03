@@ -207,18 +207,18 @@ public final class RequestProcessor extends Thread {
 		 * @param in Reader to read the message data from.
 		 * @return Message object.
 		 */
-		private static Maybe<Message> handleMessage(String username, BufferedReader in) throws IOException {
+		private static Maybe<Message> handleMessage(UserName username, BufferedReader in) throws IOException {
 			final String lineOne = Util.getLine(in);
 			final String lineTwo = Util.getLine(in);
 			final String dotLine = Util.getLine(in);
 
 			if (lineOne.startsWith("RECIPIENT ")) {
-				final Maybe<String> recipient = Maybe.just(lineOne.substring("RECIPIENT ".length(), lineOne.length()));
-				final Maybe<String> messageText = Maybe.just(lineTwo);
+                try {
+                    final Maybe<UserName> recipient = Maybe.just(new UserName(lineOne.substring("RECIPIENT ".length(), lineOne.length())));
+                    final Maybe<String> messageText = Maybe.just(lineTwo);
 
-				try {
-					//TODO: is it possible to get registered user?
-					User user = new User(username, "password");
+                    //TODO: is it possible to get registered user?
+					User user = new User(username, new Password("password"));
 					final Maybe<Message> message = Maybe.just(new Message(user, recipient.force(), messageText.force()));
 					return message;
 				} catch (Exception e){
