@@ -42,6 +42,9 @@ public class serverTest {
         usernamesGood.add("RakNoel23");
         usernamesGood.add("R4kN031");
 
+        usernamesBad.add("Jozh!?");
+        usernamesBad.add("Jozh!?");
+
         char[] possiblePass = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,:;()[]{}<>\"'#!$%&/+*?=-_|".toCharArray();
         char[] possibleUser = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".toCharArray();
 

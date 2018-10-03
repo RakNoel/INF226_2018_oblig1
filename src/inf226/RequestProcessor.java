@@ -1,7 +1,6 @@
 package inf226;
 
 import inf226.Maybe.NothingException;
-import inf226.Storage.Id;
 import inf226.Storage.Stored;
 
 import java.io.*;
@@ -127,7 +126,7 @@ public final class RequestProcessor extends Thread {
 		private void handle(final BufferedReader in, final BufferedWriter out) throws IOException {
 	    	final String requestType = Util.getLine(in);
 	    	System.err.println("Request type: " + requestType);
-	    	
+
 	    	if(requestType.equals("REQUEST TOKEN")) {
 	    		try {
 					final Token token = Server.createToken(user.force()).force();
@@ -145,7 +144,7 @@ public final class RequestProcessor extends Thread {
 	    		try {
 					out.write("REGISTERED " + user.force().getValue().getName());
 		    		System.err.println("Registration request succeeded.");
-				} catch (NothingException e) { 
+				} catch (NothingException e) {
 					out.write("FAILED");
 		    		System.err.println("Registration request failed.");
 				}
@@ -192,7 +191,7 @@ public final class RequestProcessor extends Thread {
 	    				out.flush();
 	    			}
 	    			out.write("END OF MESSAGES");
-	    			
+
 				} catch (NothingException e) {
 					out.write("FAILED");
 				}
@@ -201,7 +200,7 @@ public final class RequestProcessor extends Thread {
 	    		return;
 	    	}
 	    }
-		
+
 		/**
 		 * Handle a message send request
 		 * @param username The name of the user sending the message.
@@ -242,11 +241,10 @@ public final class RequestProcessor extends Thread {
             final String lineTwo = Util.getLine(in);
 
             if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
-                final Maybe<String> username = Server.validateUsername(lineOne.substring("USER ".length()));
-                final Maybe<String> password = Server.validatePassword(lineTwo.substring("PASS ".length()));
-
                 try {
-                    return Server.register(username.force(), password.force());
+                    final UserName username = new UserName(lineOne.substring("USER ".length()));
+                    final Password password = new Password(lineTwo.substring("PASS ".length()));
+                    return Server.register(username, password);
                 } catch (NothingException e) {
                     return Maybe.nothing();
                 }
@@ -268,12 +266,11 @@ public final class RequestProcessor extends Thread {
             final String lineOne = Util.getLine(in);
             final String lineTwo = Util.getLine(in);
             if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
-                final Maybe<String> username = Server.validateUsername(lineOne.substring("USER ".length()));
-                final Maybe<String> password = Server.validatePassword(lineTwo.substring("PASS ".length()));
-
                 try {
-                    System.err.println("Login request from user: " + username.force());
-                    return Server.authenticate(username.force(), password.force());
+                    final UserName username = new UserName(lineOne.substring("USER ".length()));
+                    final Password password = new Password(lineTwo.substring("PASS ".length()));
+                    System.err.println("Login request from user: " + username);
+                    return Server.authenticate(username, password);
                 } catch (NothingException e) {
                     return Maybe.nothing();
                 }
