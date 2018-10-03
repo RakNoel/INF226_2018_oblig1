@@ -5,6 +5,7 @@ import inf226.Storage.Storage.ObjectDeletedException;
 import inf226.Storage.Stored;
 import inf226.Storage.TransientStorage;
 
+import javax.net.ssl.SSLServerSocketFactory;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -108,7 +109,8 @@ public class Server {
         final RequestProcessor processor = new RequestProcessor();
         System.out.println("Staring authentication server");
         processor.start();
-        try (final ServerSocket socket = new ServerSocket(portNumber)) {
+        SSLServerSocketFactory factory = (SSLServerSocketFactory)SSLServerSocketFactory.getDefault();
+        try (final ServerSocket socket = factory.createServerSocket(portNumber)) {
             while (!socket.isClosed()) {
                 System.err.println("Waiting for client to connect…");
                 Socket client = socket.accept();

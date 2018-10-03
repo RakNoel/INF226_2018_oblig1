@@ -2,6 +2,7 @@ package inf226;
 
 import inf226.Maybe.NothingException;
 
+import javax.net.ssl.SSLSocketFactory;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -28,7 +29,8 @@ public class Client {
 		System.out.println("This is the client program which will allow you to register users,");
 		System.out.println("request and validate session IDs.");
 		System.out.println();
-		try (final Socket socket = new Socket(hostname,portNumber);
+		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+		try (final Socket socket = factory.createSocket(hostname,portNumber);
 			 final BufferedReader serverIn
 			   = new BufferedReader
 			   ( new InputStreamReader
