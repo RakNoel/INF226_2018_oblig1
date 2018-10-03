@@ -28,8 +28,8 @@ public class Server {
      */
     public static Maybe<Stored<User>> authenticate(String username, String password) {
         try {
-            Stored<User> u = storage.lookup(validateUsername(username).force()).force();
-            return (u.getValue().testPassword(validatePassword(password).force())) ? Maybe.just(u) : Maybe.nothing();
+            Stored<User> u = storage.lookup(username).force();
+            return (u.getValue().testPassword(password)) ? Maybe.just(u) : Maybe.nothing();
         } catch (inf226.Maybe.NothingException ex){
             return Maybe.nothing();
         }
@@ -43,10 +43,10 @@ public class Server {
      */
     public static Maybe<Stored<User>> register(String username, String password) {
         try {
-            if (!storage.lookup(validateUsername(username).force()).isNothing()) return Maybe.nothing();
-            storage.save(new User(validateUsername(username).force(), validatePassword(password).force()));
-            return storage.lookup(validateUsername(username).force());
-        }catch (inf226.Maybe.NothingException | IOException ex) {
+            if (!storage.lookup(username).isNothing()) return Maybe.nothing();
+            storage.save(new User(username, password));
+            return storage.lookup(username);
+        }catch (IOException ex) {
             return Maybe.nothing();
         }
     }
