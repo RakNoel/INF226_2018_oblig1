@@ -1,15 +1,16 @@
 package inf226;
 
 /**
- * TODO: Describe class
+ * Simple main class to run either client or a server.
+ * only meant to use with JAR artifact for ease of use.
  *
  * @author RakNoel
- * @version 1.0
+ * @version 1.1
  * @since 03.10.18
  */
 public class Program {
     public static void main(String[] args) {
-        String[] port = {"localhost"};
+        String[] hostname = {"localhost"};
         switch (args[0]) {
             case "s":
             case "server":
@@ -17,7 +18,7 @@ public class Program {
                 break;
             case "c":
             case "client":
-                Client.main(port);
+                Client.main(hostname);
                 break;
         }
     }
