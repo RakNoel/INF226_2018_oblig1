@@ -1,93 +1,122 @@
 package inf226;
 
-import java.io.BufferedReader;
-
 import inf226.Maybe.NothingException;
 import inf226.Storage.Id;
 import inf226.Storage.Stored;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+
+import java.io.*;
+import java.net.InetAddress;
 import java.net.Socket;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * This class handles the requests from clients.
- * 
- * @author INF226
  *
+ * @author INF226
  */
 public final class RequestProcessor extends Thread {
-	private final BlockingQueue<Request> queue;
+    private final BlockingQueue<Request> queue;
+    private final HashMap<InetAddress, ArrayList<Timestamp>> requests;
 
-	public RequestProcessor() {
-		queue = new LinkedBlockingQueue<Request>();
-	}
+    public RequestProcessor() {
+        queue = new LinkedBlockingQueue<Request>();
+        requests = new HashMap<>();
+    }
 
-	/**
-	 * Add a request to the queue.
-	 * @param request
-	 * @return
-	 */
-	public boolean addRequest(final Request request) {
-		return queue.add(request);
-	}
-	
-	public void run() {
-		try {
-			while(true) {
-				final Request request = queue.take();
-				/*
-				 * TODO: Implement mitigation against a flood
-				 * of requests from a single host by keeping
-				 * track of the number of requests per host.
-				 */
-				request.start();
-			}
-		} catch (InterruptedException e) { 
-		}
-	}
+    /**
+     * Add a request to the queue.
+     *
+     * @param request
+     * @return
+     */
+    public boolean addRequest(final Request request) {
+        return queue.add(request);
+    }
 
-	/**
-	 * The type of requests.
-	 * @author INF226
-	 *
-	 */
-	public static final class Request extends Thread{
-		private final Socket client;
-		private Maybe<Stored<User>> user;
-		
-		/**
-		 * Create a new request from a socket connection to a client.
-		 * @param client Socket to communicate with the client.
-		 */
-		public Request(final Socket client) {
-			this.client = client;
-			user = Maybe.nothing();
-		}
+    public void run() {
+        try {
+            while (true) {
+                final Request request = queue.take();
 
-		@Override
-		public void run() {
+                InetAddress ip = request.client.getInetAddress();
+                ArrayList<Timestamp> timestamps;
+                long timeOut = 10 * 60 * 1000; //10minutes
 
-		    try(final BufferedWriter out =
-		            new BufferedWriter(new OutputStreamWriter(client.getOutputStream()));
-		        final BufferedReader in = new BufferedReader(
-		            new InputStreamReader(client.getInputStream()))) {
-		    	while(true) {
-		    		handle(in,out);
-		    	}
-		    } catch (IOException e) {
-		    	// Client disconnected
-		    }
-			try {
-				client.close();
-			} catch (IOException e) {
-				// Client closed.
-			}
-		}
-		
+                if (requests.containsKey(ip)) {
+                    timestamps = requests.get(ip);
+                    ArrayList<Timestamp> newTimestamps = new ArrayList<>();
+                    for (Timestamp t : timestamps) {
+                        //keep only timestamps from the last 10 minutes
+                        if (t.after(new Timestamp(System.currentTimeMillis() - timeOut))) {
+                            newTimestamps.add(t);
+                        }
+                    }
+                    timestamps = newTimestamps;
+                } else {
+                    timestamps = new ArrayList<>();
+                }
+
+                timestamps.add(new Timestamp(System.currentTimeMillis()));
+                requests.put(ip, timestamps);
+
+                //max 5 requests per 10 minutes
+                if (timestamps.size() <= 5) {
+                    request.start();
+                } else {
+                    try {
+                        request.client.close();
+                    } catch (IOException e) {
+
+                    }
+                }
+            }
+        } catch (InterruptedException e) {
+        }
+    }
+
+    /**
+     * The type of requests.
+     *
+     * @author INF226
+     */
+    public static final class Request extends Thread {
+        private final Socket client;
+        private Maybe<Stored<User>> user;
+
+        /**
+         * Create a new request from a socket connection to a client.
+         *
+         * @param client Socket to communicate with the client.
+         */
+        public Request(final Socket client) {
+            this.client = client;
+            user = Maybe.nothing();
+        }
+
+        @Override
+        public void run() {
+
+            try (final BufferedWriter out =
+                         new BufferedWriter(new OutputStreamWriter(client.getOutputStream()));
+                 final BufferedReader in = new BufferedReader(
+                         new InputStreamReader(client.getInputStream()))) {
+                while (true) {
+                    handle(in, out);
+                }
+            } catch (IOException e) {
+                // Client disconnected
+            }
+            try {
+                client.close();
+            } catch (IOException e) {
+                // Client closed.
+            }
+        }
+
 
 		/**
 		 * Handle a single request
@@ -205,54 +234,56 @@ public final class RequestProcessor extends Thread {
 			}
 		}
 
-		/**
-		 * Handle a registration request.
-		 * @param in Request input.
-		 * @return The stored user as a result of the registration.
-		 * @throws IOException If the client hangs up unexpectedly.
-		 */
-		private static Maybe<Stored<User>> handleRegistration(BufferedReader in) throws IOException {
-			final String lineOne = Util.getLine(in);
-		    final String lineTwo = Util.getLine(in);
+        /**
+         * Handle a registration request.
+         *
+         * @param in Request input.
+         * @return The stored user as a result of the registration.
+         * @throws IOException If the client hangs up unexpectedly.
+         */
+        private static Maybe<Stored<User>> handleRegistration(BufferedReader in) throws IOException {
+            final String lineOne = Util.getLine(in);
+            final String lineTwo = Util.getLine(in);
 
-		    if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
-		    	final Maybe<String> username = Maybe.just(lineOne.substring("USER ".length(), lineOne.length()));
-		    	final Maybe<String> password = Server.validatePassword(lineTwo.substring("PASS ".length(), lineTwo.length()));
+            if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
+                final Maybe<String> username = Server.validateUsername(lineOne.substring("USER ".length()));
+                final Maybe<String> password = Server.validatePassword(lineTwo.substring("PASS ".length()));
 
-				try {
-					return Server.register(username.force(), password.force());
-				} catch (NothingException e) {
-					return Maybe.nothing();
-				}
-			} else {
-				return Maybe.nothing();
-			}
-			
-		}
-		
-		/**
-		 * Handle a login request.
-		 * @param in Request input.
-		 * @return User object as a result of a successfu login.
-		 * @throws IOException If the user hangs up unexpectedly.
-		 */
-		private static Maybe<Stored<User>> handleLogin(final BufferedReader in) throws IOException {
+                try {
+                    return Server.register(username.force(), password.force());
+                } catch (NothingException e) {
+                    return Maybe.nothing();
+                }
+            } else {
+                return Maybe.nothing();
+            }
 
-			final String lineOne = Util.getLine(in);
-		    final String lineTwo = Util.getLine(in);
-		    if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
-		    	final Maybe<String> username = Server.validateUsername(lineOne.substring("USER ".length(), lineOne.length()));
-		    	final Maybe<String> password = Server.validatePassword(lineTwo.substring("PASS ".length(), lineTwo.length()));
+        }
 
-				try {
-			    	System.err.println("Login request from user: " + username.force());
-					return Server.authenticate(username.force(), password.force());
-				} catch (NothingException e) {
-					return Maybe.nothing();
-				}
-			} else {
-				return Maybe.nothing();
-			}
-		}
-	}
+        /**
+         * Handle a login request.
+         *
+         * @param in Request input.
+         * @return User object as a result of a successfu login.
+         * @throws IOException If the user hangs up unexpectedly.
+         */
+        private static Maybe<Stored<User>> handleLogin(final BufferedReader in) throws IOException {
+
+            final String lineOne = Util.getLine(in);
+            final String lineTwo = Util.getLine(in);
+            if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
+                final Maybe<String> username = Server.validateUsername(lineOne.substring("USER ".length()));
+                final Maybe<String> password = Server.validatePassword(lineTwo.substring("PASS ".length()));
+
+                try {
+                    System.err.println("Login request from user: " + username.force());
+                    return Server.authenticate(username.force(), password.force());
+                } catch (NothingException e) {
+                    return Maybe.nothing();
+                }
+            } else {
+                return Maybe.nothing();
+            }
+        }
+    }
 }

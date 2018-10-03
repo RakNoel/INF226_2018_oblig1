@@ -1,58 +1,85 @@
 package inf226;
 
-import java.io.*;
-import java.net.*;
-import java.util.function.Function;
-
 import inf226.Storage.KeyedStorage;
 import inf226.Storage.Storage.ObjectDeletedException;
 import inf226.Storage.Stored;
 import inf226.Storage.TransientStorage;
 
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.Arrays;
+
 /**
- * 
  * The Server main class. This implements all critical server functions.
- * 
- * @author INF226
  *
+ * @author INF226
  */
 public class Server {
-	private static final int portNumber = 1337;
-	private static final KeyedStorage<String,User> storage
-	  = new TransientStorage<String,User>
-	         (new Function<User,String>()
-	        		 {public String apply(User u)
-	        		 {return u.getName();}});
-	
-	public static Maybe<Stored<User>> authenticate(String username, String password) {
-		// TODO: Implement user authentication
-		return Maybe.nothing();
-	}
+    private static final int portNumber = 1337;
+    private static final KeyedStorage<String, User> storage
+            = new TransientStorage<>(User::getName);
 
-	public static Maybe<Stored<User>> register(String username, String password) {
-		// TODO: Implement user registration 
-		return Maybe.nothing();
-	}
-	
-	public static Maybe<Token> createToken(Stored<User> user) {
-		// TODO: Implement token creation
-		return Maybe.nothing();
-	}
-	public static Maybe<Stored<User>> authenticate(String username, Token token) {
-		// TODO: Implement user authentication
-		return Maybe.nothing();
-	}
+    /**
+     * Method to authenticate a user by password
+     * @param username Username we hope to find
+     * @param password Password to test if user is found
+     * @return Maybe(User) if exist and matches password
+     */
+    public static Maybe<Stored<User>> authenticate(String username, String password) {
+        try {
+            Stored<User> u = storage.lookup(username).force();
+            return (u.getValue().testPassword(password)) ? Maybe.just(u) : Maybe.nothing();
+        } catch (inf226.Maybe.NothingException ex){
+            return Maybe.nothing();
+        }
+    }
 
-	public static Maybe<String> validateUsername(String username) {
-		// TODO: Validate username before returning
-		return Maybe.just(username);
-	}
+    /**
+     * Method that will add a new user if there is not already someone with that username
+     * @param username Unique username to register
+     * @param password password of said user
+     * @return Maybe(User) of the new user, depending on success.
+     */
+    public static Maybe<Stored<User>> register(String username, String password) {
+        try {
+            if (!storage.lookup(username).isNothing()) return Maybe.nothing();
+            storage.save(new User(username, password));
+            return storage.lookup(username);
+        }catch (IOException ex) {
+            return Maybe.nothing();
+        }
+    }
 
-	public static Maybe<String> validatePassword(String pass) {
-		// TODO: Validate pass before returning
-		// This method only checks that the password contains a safe string.
-		return Maybe.just(pass);
-	}
+    public static Maybe<Token> createToken(Stored<User> user) {
+        // TODO: Implement token creation
+        return Maybe.nothing();
+    }
+
+    public static Maybe<Stored<User>> authenticate(String username, Token token) {
+        // TODO: Implement user authentication
+        return Maybe.nothing();
+    }
+
+    /**
+     * Method to validate that the username is a safe string
+     * @param username Username to be sanitized
+     * @return Maybe.just(username)
+     */
+    public static Maybe<String> validateUsername(String username) {
+        boolean res = username.matches("[\\w\\d]*");
+        return (res) ? Maybe.just(username) : Maybe.nothing();
+    }
+
+    /**
+     * Method to validate that the password is a safe string
+     * @param pass Password to be sanitized
+     * @return Maybe.just(password)
+     */
+    public static Maybe<String> validatePassword(String pass) {
+        boolean res = pass.matches("[\\w\\d.,:;()\\[\\]{}<>\"'#!$%&/+*?=_|\\-]*");
+        return (res) ? Maybe.just(pass) : Maybe.nothing();
+    }
 
 	public static boolean sendMessage(Stored<User> sender, Message message) {
 		Maybe<Stored<User>> recipient = storage.lookup(message.recipient);
