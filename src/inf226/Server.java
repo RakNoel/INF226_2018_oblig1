@@ -87,7 +87,8 @@ public class Server {
 			return false;
 		}
 		try {
-			storage.update(recipient.force(), recipient.force().getValue().addMessage(message));
+            User newUser = recipient.force().getValue().addMessage(message);
+			storage.update(storage.lookup(message.recipient).force(), newUser);
 			return true;
 		} catch (Exception e) {
 			return false;

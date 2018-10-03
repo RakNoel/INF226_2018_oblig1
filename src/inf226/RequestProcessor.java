@@ -211,21 +211,16 @@ public final class RequestProcessor extends Thread {
 		private static Maybe<Message> handleMessage(String username, BufferedReader in) throws IOException {
 			final String lineOne = Util.getLine(in);
 			final String lineTwo = Util.getLine(in);
-			final String lineThree = Util.getLine(in);
 
-			if (lineOne.startsWith("SEND MESSAGE") && lineTwo.startsWith("RECIPIENT ")) {
-				final Maybe<String> recipient = Maybe.just(lineTwo.substring("RECIPIENT ".length(), lineTwo.length()));
-				final Maybe<String> messageText = Maybe.just(lineThree);
+			if (lineOne.startsWith("RECIPIENT ")) {
+				final Maybe<String> recipient = Maybe.just(lineOne.substring("RECIPIENT ".length(), lineOne.length()));
+				final Maybe<String> messageText = Maybe.just(lineTwo);
 
 				try {
-					//TODO: get registered user
-					User user = new User(username);
+					//TODO: is it possible to get registered user?
+					User user = new User(username, "password");
 					final Maybe<Message> message = Maybe.just(new Message(user, recipient.force(), messageText.force()));
-					if (Server.sendMessage(new Stored<User>(new Id.Generator(),user), message.force())){
-						return message;
-					} else {
-						return Maybe.nothing();
-					}
+					return message;
 				} catch (Exception e){
 					return Maybe.nothing();
 				}

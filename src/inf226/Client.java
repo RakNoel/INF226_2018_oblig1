@@ -271,15 +271,12 @@ public class Client {
 		System.out.print("Message: ");
 		//TODO: read multiple lines
 		String messageText = Util.getLine(stdin);
-		try{
-			//TODO: get actual registered user
-			Message message = new Message(new User("tempUser"), recipient, messageText);
-			serverOut.write("SEND MESSAGE"); serverOut.newLine();
-			serverOut.write("RECIPIENT " + message.recipient); serverOut.newLine();
-			serverOut.write(message.message);
-		}catch(Message.Invalid e){
-			throw new IOException();
-		}
+
+		serverOut.write("SEND MESSAGE"); serverOut.newLine();
+		serverOut.write("RECIPIENT " + recipient); serverOut.newLine();
+		serverOut.write(messageText); serverOut.newLine();
+		serverOut.write(".");
+		serverOut.flush();
 	}
 
 	private static String unescape(final String messageLine) {
