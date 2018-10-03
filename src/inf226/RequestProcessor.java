@@ -1,13 +1,9 @@
 package inf226;
 
-import java.io.BufferedReader;
-
 import inf226.Maybe.NothingException;
 import inf226.Storage.Stored;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+
+import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.sql.Timestamp;
@@ -18,251 +14,259 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * This class handles the requests from clients.
- * 
- * @author INF226
  *
+ * @author INF226
  */
 public final class RequestProcessor extends Thread {
-	private final BlockingQueue<Request> queue;
-	private final HashMap<InetAddress, ArrayList<Timestamp>> requests;
+    private final BlockingQueue<Request> queue;
+    private final HashMap<InetAddress, ArrayList<Timestamp>> requests;
 
-	public RequestProcessor() {
-		queue = new LinkedBlockingQueue<Request>();
-		requests = new HashMap<>();
-	}
+    public RequestProcessor() {
+        queue = new LinkedBlockingQueue<Request>();
+        requests = new HashMap<>();
+    }
 
-	/**
-	 * Add a request to the queue.
-	 * @param request
-	 * @return
-	 */
-	public boolean addRequest(final Request request) {
-		return queue.add(request);
-	}
-	
-	public void run() {
-		try {
-			while(true) {
-				final Request request = queue.take();
+    /**
+     * Add a request to the queue.
+     *
+     * @param request
+     * @return
+     */
+    public boolean addRequest(final Request request) {
+        return queue.add(request);
+    }
 
-				InetAddress ip = request.client.getInetAddress();
-				ArrayList<Timestamp> timestamps;
-				long timeOut = 10 * 60 * 1000; //10minutes
+    public void run() {
+        try {
+            while (true) {
+                final Request request = queue.take();
 
-				if(requests.containsKey(ip)){
-					timestamps = requests.get(ip);
-					ArrayList<Timestamp> newTimestamps = new ArrayList<>();
-					for(Timestamp t : timestamps){
-						//keep only timestamps from the last 10 minutes
-						if(t.after(new Timestamp(System.currentTimeMillis() - timeOut))){
-							newTimestamps.add(t);
-						}
-					}
-					timestamps = newTimestamps;
-				} else {
-					timestamps = new ArrayList<>();
-				}
+                InetAddress ip = request.client.getInetAddress();
+                ArrayList<Timestamp> timestamps;
+                long timeOut = 10 * 60 * 1000; //10minutes
 
-				timestamps.add(new Timestamp(System.currentTimeMillis()));
-				requests.put(ip, timestamps);
+                if (requests.containsKey(ip)) {
+                    timestamps = requests.get(ip);
+                    ArrayList<Timestamp> newTimestamps = new ArrayList<>();
+                    for (Timestamp t : timestamps) {
+                        //keep only timestamps from the last 10 minutes
+                        if (t.after(new Timestamp(System.currentTimeMillis() - timeOut))) {
+                            newTimestamps.add(t);
+                        }
+                    }
+                    timestamps = newTimestamps;
+                } else {
+                    timestamps = new ArrayList<>();
+                }
 
-				//max 5 requests per 10 minutes
-				if(timestamps.size() <= 5){
-					request.start();
-				} else {
-					try {
-						request.client.close();
-					} catch (IOException e) {
+                timestamps.add(new Timestamp(System.currentTimeMillis()));
+                requests.put(ip, timestamps);
 
-					}
-				}
-			}
-		} catch (InterruptedException e) { 
-		}
-	}
+                //max 5 requests per 10 minutes
+                if (timestamps.size() <= 5) {
+                    request.start();
+                } else {
+                    try {
+                        request.client.close();
+                    } catch (IOException e) {
 
-	/**
-	 * The type of requests.
-	 * @author INF226
-	 *
-	 */
-	public static final class Request extends Thread{
-		private final Socket client;
-		private Maybe<Stored<User>> user;
-		
-		/**
-		 * Create a new request from a socket connection to a client.
-		 * @param client Socket to communicate with the client.
-		 */
-		public Request(final Socket client) {
-			this.client = client;
-			user = Maybe.nothing();
-		}
+                    }
+                }
+            }
+        } catch (InterruptedException e) {
+        }
+    }
 
-		@Override
-		public void run() {
+    /**
+     * The type of requests.
+     *
+     * @author INF226
+     */
+    public static final class Request extends Thread {
+        private final Socket client;
+        private Maybe<Stored<User>> user;
 
-		    try(final BufferedWriter out =
-		            new BufferedWriter(new OutputStreamWriter(client.getOutputStream()));
-		        final BufferedReader in = new BufferedReader(
-		            new InputStreamReader(client.getInputStream()))) {
-		    	while(true) {
-		    		handle(in,out);
-		    	}
-		    } catch (IOException e) {
-		    	// Client disconnected
-		    }
-			try {
-				client.close();
-			} catch (IOException e) {
-				// Client closed.
-			}
-		}
-		
+        /**
+         * Create a new request from a socket connection to a client.
+         *
+         * @param client Socket to communicate with the client.
+         */
+        public Request(final Socket client) {
+            this.client = client;
+            user = Maybe.nothing();
+        }
 
-		/**
-		 * Handle a single request
-		 * @param in Input from the client.
-		 * @param out Output to the client.
-		 * @throws IOException If the user hangs up unexpectedly
-		 */
-		private void handle(final BufferedReader in, final BufferedWriter out) throws IOException {
-	    	final String requestType = Util.getLine(in);
-	    	System.err.println("Request type: " + requestType);
-	    	
-	    	if(requestType.equals("REQUEST TOKEN")) {
-	    		try {
-					final Token token = Server.createToken(user.force()).force();
-					out.write("TOKEN " + token.stringRepresentation());
-				} catch (NothingException e) {
-					out.write("FAILED");
-				}
-	    		out.newLine();
-	    		out.flush();
-	    		return;
-	    	}
-	    	if(requestType.equals("REGISTER")) {
-	    		System.err.println("Handling registration request");
-	    		user = handleRegistration(in);
-	    		try {
-					out.write("REGISTERED " + user.force().getValue().getName());
-		    		System.err.println("Registration request succeeded.");
-				} catch (NothingException e) { 
-					out.write("FAILED");
-		    		System.err.println("Registration request failed.");
-				}
-	    		out.newLine();
-	    		out.flush();
-	    		return;
-	    	}
-	    	if(requestType.equals("LOGIN")) {
-	    		user = handleLogin(in);
-	    		try {
-					out.write("LOGGED IN " + user.force().getValue().getName());
-				} catch (NothingException e) {
-					out.write("FAILED");
-				}
-	    		out.newLine();
-	    		out.flush();
-	    		return;
-	    	}
-	    	if(requestType.equals("SEND MESSAGE")) {
-	    		try {
-	    			final Maybe<Message> message = handleMessage(user.force().getValue().getName(),in);
-	    			if(Server.sendMessage(user.force(),message.force())) {
-	    				out.write("MESSAGE SENT");
-	    			} else {
-	    				out.write("FAILED");
-	    			}
-				} catch (NothingException e) {
-					out.write("FAILED");
-				}
-	    		out.newLine();
-	    		out.flush();
-	    		return;
-	    	}
-	    	if(requestType.equals("READ MESSAGES")) {
-	    		System.err.println("Handling a read message request");
-	    		try {
-	    			// Refresh the user object in order to get new messages.
-		    		user = Server.refresh(user.force());
-	    			for (Message m : user.force().getValue().getMessages()) {
-	    				System.err.println("Sending message from " + m.sender);
-	    				out.write("MESSAGE FROM " + m.sender); out.newLine();
-	    				out.write(m.message);out.newLine();
-	    				out.write(".");out.newLine();
-	    				out.flush();
-	    			}
-	    			out.write("END OF MESSAGES");
-	    			
-				} catch (NothingException e) {
-					out.write("FAILED");
-				}
-	    		out.newLine();
-	    		out.flush();
-	    		return;
-	    	}
-	    }
-		
-		/**
-		 * Handle a message send request
-		 * @param username The name of the user sending the message.
-		 * @param in Reader to read the message data from.
-		 * @return Message object.
-		 */
-		private static Maybe<Message> handleMessage(String username, BufferedReader in) {
-			// TODO: Handle message input
-			return Maybe.nothing();
-		}
+        @Override
+        public void run() {
 
-		/**
-		 * Handle a registration request.
-		 * @param in Request input.
-		 * @return The stored user as a result of the registration.
-		 * @throws IOException If the client hangs up unexpectedly.
-		 */
-		private static Maybe<Stored<User>> handleRegistration(BufferedReader in) throws IOException {
-			final String lineOne = Util.getLine(in);
-		    final String lineTwo = Util.getLine(in);
+            try (final BufferedWriter out =
+                         new BufferedWriter(new OutputStreamWriter(client.getOutputStream()));
+                 final BufferedReader in = new BufferedReader(
+                         new InputStreamReader(client.getInputStream()))) {
+                while (true) {
+                    handle(in, out);
+                }
+            } catch (IOException e) {
+                // Client disconnected
+            }
+            try {
+                client.close();
+            } catch (IOException e) {
+                // Client closed.
+            }
+        }
 
-		    if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
-		    	final Maybe<String> username = Maybe.just(lineOne.substring("USER ".length(), lineOne.length()));
-		    	final Maybe<String> password = Server.validatePassword(lineTwo.substring("PASS ".length(), lineTwo.length()));
 
-				try {
-					return Server.register(username.force(), password.force());
-				} catch (NothingException e) {
-					return Maybe.nothing();
-				}
-			} else {
-				return Maybe.nothing();
-			}
-			
-		}
-		
-		/**
-		 * Handle a login request.
-		 * @param in Request input.
-		 * @return User object as a result of a successfu login.
-		 * @throws IOException If the user hangs up unexpectedly.
-		 */
-		private static Maybe<Stored<User>> handleLogin(final BufferedReader in) throws IOException {
+        /**
+         * Handle a single request
+         *
+         * @param in  Input from the client.
+         * @param out Output to the client.
+         * @throws IOException If the user hangs up unexpectedly
+         */
+        private void handle(final BufferedReader in, final BufferedWriter out) throws IOException {
+            final String requestType = Util.getLine(in);
+            System.err.println("Request type: " + requestType);
 
-			final String lineOne = Util.getLine(in);
-		    final String lineTwo = Util.getLine(in);
-		    if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
-		    	final Maybe<String> username = Server.validateUsername(lineOne.substring("USER ".length(), lineOne.length()));
-		    	final Maybe<String> password = Server.validatePassword(lineTwo.substring("PASS ".length(), lineTwo.length()));
+            if (requestType.equals("REQUEST TOKEN")) {
+                try {
+                    final Token token = Server.createToken(user.force()).force();
+                    out.write("TOKEN " + token.stringRepresentation());
+                } catch (NothingException e) {
+                    out.write("FAILED");
+                }
+                out.newLine();
+                out.flush();
+                return;
+            }
+            if (requestType.equals("REGISTER")) {
+                System.err.println("Handling registration request");
+                user = handleRegistration(in);
+                try {
+                    out.write("REGISTERED " + user.force().getValue().getName());
+                    System.err.println("Registration request succeeded.");
+                } catch (NothingException e) {
+                    out.write("FAILED");
+                    System.err.println("Registration request failed.");
+                }
+                out.newLine();
+                out.flush();
+                return;
+            }
+            if (requestType.equals("LOGIN")) {
+                user = handleLogin(in);
+                try {
+                    out.write("LOGGED IN " + user.force().getValue().getName());
+                } catch (NothingException e) {
+                    out.write("FAILED");
+                }
+                out.newLine();
+                out.flush();
+                return;
+            }
+            if (requestType.equals("SEND MESSAGE")) {
+                try {
+                    final Maybe<Message> message = handleMessage(user.force().getValue().getName(), in);
+                    if (Server.sendMessage(user.force(), message.force())) {
+                        out.write("MESSAGE SENT");
+                    } else {
+                        out.write("FAILED");
+                    }
+                } catch (NothingException e) {
+                    out.write("FAILED");
+                }
+                out.newLine();
+                out.flush();
+                return;
+            }
+            if (requestType.equals("READ MESSAGES")) {
+                System.err.println("Handling a read message request");
+                try {
+                    // Refresh the user object in order to get new messages.
+                    user = Server.refresh(user.force());
+                    for (Message m : user.force().getValue().getMessages()) {
+                        System.err.println("Sending message from " + m.sender);
+                        out.write("MESSAGE FROM " + m.sender);
+                        out.newLine();
+                        out.write(m.message);
+                        out.newLine();
+                        out.write(".");
+                        out.newLine();
+                        out.flush();
+                    }
+                    out.write("END OF MESSAGES");
 
-				try {
-			    	System.err.println("Login request from user: " + username.force());
-					return Server.authenticate(username.force(), password.force());
-				} catch (NothingException e) {
-					return Maybe.nothing();
-				}
-			} else {
-				return Maybe.nothing();
-			}
-		}
-	}
+                } catch (NothingException e) {
+                    out.write("FAILED");
+                }
+                out.newLine();
+                out.flush();
+                return;
+            }
+        }
+
+        /**
+         * Handle a message send request
+         *
+         * @param username The name of the user sending the message.
+         * @param in       Reader to read the message data from.
+         * @return Message object.
+         */
+        private static Maybe<Message> handleMessage(String username, BufferedReader in) {
+            // TODO: Handle message input
+            return Maybe.nothing();
+        }
+
+        /**
+         * Handle a registration request.
+         *
+         * @param in Request input.
+         * @return The stored user as a result of the registration.
+         * @throws IOException If the client hangs up unexpectedly.
+         */
+        private static Maybe<Stored<User>> handleRegistration(BufferedReader in) throws IOException {
+            final String lineOne = Util.getLine(in);
+            final String lineTwo = Util.getLine(in);
+
+            if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
+                final Maybe<String> username = Server.validateUsername(lineOne.substring("USER ".length()));
+                final Maybe<String> password = Server.validatePassword(lineTwo.substring("PASS ".length()));
+
+                try {
+                    return Server.register(username.force(), password.force());
+                } catch (NothingException e) {
+                    return Maybe.nothing();
+                }
+            } else {
+                return Maybe.nothing();
+            }
+
+        }
+
+        /**
+         * Handle a login request.
+         *
+         * @param in Request input.
+         * @return User object as a result of a successfu login.
+         * @throws IOException If the user hangs up unexpectedly.
+         */
+        private static Maybe<Stored<User>> handleLogin(final BufferedReader in) throws IOException {
+
+            final String lineOne = Util.getLine(in);
+            final String lineTwo = Util.getLine(in);
+            if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
+                final Maybe<String> username = Server.validateUsername(lineOne.substring("USER ".length()));
+                final Maybe<String> password = Server.validatePassword(lineTwo.substring("PASS ".length()));
+
+                try {
+                    System.err.println("Login request from user: " + username.force());
+                    return Server.authenticate(username.force(), password.force());
+                } catch (NothingException e) {
+                    return Maybe.nothing();
+                }
+            } else {
+                return Maybe.nothing();
+            }
+        }
+    }
 }
