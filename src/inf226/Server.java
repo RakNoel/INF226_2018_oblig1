@@ -17,8 +17,7 @@ import java.util.Arrays;
  */
 public class Server {
     private static final int portNumber = 1337;
-    private static final KeyedStorage<UserName, User> storage
-            = new TransientStorage<>(User::getName);
+    private static final DataBaseUserStorage storage = DataBaseUserStorage.getInstance();
 
     /**
      * Method to authenticate a user by password
@@ -41,10 +40,10 @@ public class Server {
      * @param password password of said user
      * @return Maybe(User) of the new user, depending on success.
      */
-    public static Maybe<Stored<User>> register(UserName username, Password password) {
+    public static Maybe<Stored<User>> register(UserName username, Password password, String salt) {
         try {
             if (!storage.lookup(username).isNothing()) return Maybe.nothing();
-            storage.save(new User(username, password));
+            storage.save(new User(username, password, salt));
             return storage.lookup(username);
         }catch (IOException ex) {
             return Maybe.nothing();

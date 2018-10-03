@@ -6,8 +6,10 @@ import inf226.Storage.Stored;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.security.SecureRandom;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -20,6 +22,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 public final class RequestProcessor extends Thread {
     private final BlockingQueue<Request> queue;
     private final HashMap<InetAddress, ArrayList<Timestamp>> requests;
+    private static DataBaseUserStorage db = DataBaseUserStorage.getInstance();
 
     public RequestProcessor() {
         queue = new LinkedBlockingQueue<Request>();
@@ -231,8 +234,14 @@ public final class RequestProcessor extends Thread {
             if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
                 try {
                     final UserName username = new UserName(lineOne.substring("USER ".length()));
-                    final Password password = new Password(lineTwo.substring("PASS ".length()));
-                    return Server.register(username, password);
+
+                    StringBuilder sbldr = new StringBuilder();
+                    byte[] salt = new byte[50];
+                    new SecureRandom().nextBytes(salt);
+                    for (byte b : salt) { sbldr.append((char)b); }
+
+                    final Password password = new Password(lineTwo.substring("PASS ".length()), username, sbldr.toString());
+                    return Server.register(username, password, sbldr.toString());
                 } catch (NothingException e) {
                     return Maybe.nothing();
                 }
@@ -256,7 +265,8 @@ public final class RequestProcessor extends Thread {
             if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
                 try {
                     final UserName username = new UserName(lineOne.substring("USER ".length()));
-                    final Password password = new Password(lineTwo.substring("PASS ".length()));
+                    final String salt = db.getSalt(username).force();
+                    final Password password = new Password(lineTwo.substring("PASS ".length()), username, salt);
                     System.err.println("Login request from user: " + username);
                     return Server.authenticate(username, password);
                 } catch (NothingException e) {
