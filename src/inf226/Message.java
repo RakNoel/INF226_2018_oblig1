@@ -4,7 +4,7 @@ public class Message {
 	public final String sender, recipient, message;
 	
 	Message(final User user, final String recipient, final String message) throws Invalid {
-		this.sender = user.getName();
+		this.sender = user.getName().toString();
 		this.recipient = recipient;
 		if (!valid(message))
 			throw new Invalid(message);

@@ -17,7 +17,7 @@ import java.util.Arrays;
  */
 public class Server {
     private static final int portNumber = 1337;
-    private static final KeyedStorage<String, User> storage
+    private static final KeyedStorage<UserName, User> storage
             = new TransientStorage<>(User::getName);
 
     /**
@@ -26,7 +26,7 @@ public class Server {
      * @param password Password to test if user is found
      * @return Maybe(User) if exist and matches password
      */
-    public static Maybe<Stored<User>> authenticate(String username, String password) {
+    public static Maybe<Stored<User>> authenticate(UserName username, Password password) {
         try {
             Stored<User> u = storage.lookup(username).force();
             return (u.getValue().testPassword(password)) ? Maybe.just(u) : Maybe.nothing();
@@ -41,7 +41,7 @@ public class Server {
      * @param password password of said user
      * @return Maybe(User) of the new user, depending on success.
      */
-    public static Maybe<Stored<User>> register(String username, String password) {
+    public static Maybe<Stored<User>> register(UserName username, Password password) {
         try {
             if (!storage.lookup(username).isNothing()) return Maybe.nothing();
             storage.save(new User(username, password));

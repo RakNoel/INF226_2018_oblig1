@@ -166,7 +166,7 @@ public final class RequestProcessor extends Thread {
             }
             if (requestType.equals("SEND MESSAGE")) {
                 try {
-                    final Maybe<Message> message = handleMessage(user.force().getValue().getName(), in);
+                    final Maybe<Message> message = handleMessage(user.force().getValue().getName().toString(), in);
                     if (Server.sendMessage(user.force(), message.force())) {
                         out.write("MESSAGE SENT");
                     } else {
@@ -229,11 +229,10 @@ public final class RequestProcessor extends Thread {
             final String lineTwo = Util.getLine(in);
 
             if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
-                final Maybe<String> username = Server.validateUsername(lineOne.substring("USER ".length()));
-                final Maybe<String> password = Server.validatePassword(lineTwo.substring("PASS ".length()));
-
                 try {
-                    return Server.register(username.force(), password.force());
+                    final UserName username = new UserName(lineOne.substring("USER ".length()));
+                    final Password password = new Password(lineTwo.substring("PASS ".length()));
+                    return Server.register(username, password);
                 } catch (NothingException e) {
                     return Maybe.nothing();
                 }
@@ -255,12 +254,11 @@ public final class RequestProcessor extends Thread {
             final String lineOne = Util.getLine(in);
             final String lineTwo = Util.getLine(in);
             if (lineOne.startsWith("USER ") && lineTwo.startsWith("PASS ")) {
-                final Maybe<String> username = Server.validateUsername(lineOne.substring("USER ".length()));
-                final Maybe<String> password = Server.validatePassword(lineTwo.substring("PASS ".length()));
-
                 try {
-                    System.err.println("Login request from user: " + username.force());
-                    return Server.authenticate(username.force(), password.force());
+                    final UserName username = new UserName(lineOne.substring("USER ".length()));
+                    final Password password = new Password(lineTwo.substring("PASS ".length()));
+                    System.err.println("Login request from user: " + username);
+                    return Server.register(username, password);
                 } catch (NothingException e) {
                     return Maybe.nothing();
                 }
