@@ -15,7 +15,7 @@ import java.util.TreeMap;
  * Class used to securely store the users in a longtime storage
  *
  * @author RakNoel
- * @version 1.0
+ * @version 2.1
  * @since 03.10.18
  */
 public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
@@ -23,13 +23,16 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
     private static DataBaseUserStorage single_instance = null;
 
     private final TreeMap<Id, Stored<User>> memory;
+    private final TreeMap<String, Id> keytable;
     private Connection conn;
     private String url = "jdbc:sqlite:users.sqlite";
     private final Id.Generator id_generator;
 
     private DataBaseUserStorage() {
         memory = new TreeMap<>();
+        keytable = new TreeMap<>();
         id_generator = new Id.Generator();
+
         try {
             conn = DriverManager.getConnection(url);
             System.out.println("Connection to SQLite established.");
@@ -72,33 +75,39 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
     @Override
     public Maybe<Stored<User>> lookup(UserName key) {
         try {
-            String query = "SELECT * FROM 'USERS' WHERE uname= ?";
-            PreparedStatement statement = conn.prepareStatement(query);
-            statement.setString(1, key.toString());
-            ResultSet res = statement.executeQuery();
+            Maybe<Id> id = new Maybe<>(keytable.get(key.toString()));
+            if (!id.isNothing())
+                return Maybe.just(memory.get(id.force()));
+            else {
+                String query = "SELECT * FROM 'USERS' WHERE uname= ?";
+                PreparedStatement statement = conn.prepareStatement(query);
+                statement.setString(1, key.toString());
+                ResultSet res = statement.executeQuery();
 
-            String salt = res.getString("salt");
-            UserName username = new UserName(res.getString("uname"));
-            Password passwd = new Password(res.getString("passwd"));
+                String salt = res.getString("salt");
+                UserName username = new UserName(res.getString("uname"));
+                Password passwd = new Password(res.getString("passwd"));
 
-            ImmutableLinkedList<Message> messages = new ImmutableLinkedList<>();
-            query = "SELECT * FROM 'MESSAGES' WHERE user_to= ? ORDER BY id DESC";
-            statement = conn.prepareStatement(query);
-            statement.setString(1, key.toString());
-            res = statement.executeQuery();
+                ImmutableLinkedList<Message> messages = new ImmutableLinkedList<>();
+                query = "SELECT * FROM 'MESSAGES' WHERE user_to= ? ORDER BY id DESC";
+                statement = conn.prepareStatement(query);
+                statement.setString(1, key.toString());
+                res = statement.executeQuery();
 
-            User recipientUser = new User(username, passwd, salt);
+                User recipientUser = new User(username, passwd, salt);
 
-            while (res.next()){
-                String sender = res.getString("user_from");
-                String message = res.getString("msg");
-                Message h = new Message(new User(new UserName(sender), new Password("123"), ""), username, message);
-                recipientUser = recipientUser.addMessage(h);
+                while (res.next()) {
+                    String sender = res.getString("user_from");
+                    String message = res.getString("msg");
+                    Message h = new Message(new User(new UserName(sender), new Password("123"), ""), username, message);
+                    recipientUser = recipientUser.addMessage(h);
+                }
+
+                Stored<User> stored = new Stored<>(id_generator, recipientUser);
+                memory.put(stored.id(), stored);
+                keytable.put(stored.getValue().getName().toString(), stored.id());
+                return Maybe.just(stored);
             }
-
-            Stored<User> stored = new Stored<>(id_generator, recipientUser);
-            memory.put(stored.id(), stored);
-            return Maybe.just(stored);
         } catch (SQLException | Message.Invalid | inf226.Maybe.NothingException e) {
             return Maybe.nothing();
         }
@@ -184,6 +193,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
 
             Stored<User> h = lookup(value.getName()).force();
             memory.put(h.id(), h);
+            keytable.put(h.getValue().getName().toString(), h.id());
             return h;
         } catch (SQLException | Maybe.NothingException e) {
             throw new IOException("Unable to write user to DB");
