@@ -2,6 +2,7 @@ package inf226;
 
 import inf226.Maybe.NothingException;
 
+import javax.net.ssl.SSLSocketFactory;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -23,12 +24,16 @@ public class Client {
 	static final BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
 
 	public static void main(String[] args) {
+		System.setProperty("javax.net.ssl.trustStore", "inf226.jks");
+		System.setProperty("javax.net.ssl.trustStorePassword", "lengdeslaarkompleksitet");
+
 		final String hostname = (args.length<1)?"localhost":args[0];
 		System.out.println("Welcome to assignment 1.");
 		System.out.println("This is the client program which will allow you to register users,");
 		System.out.println("request and validate session IDs.");
 		System.out.println();
-		try (final Socket socket = new Socket(hostname,portNumber);
+		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+		try (final Socket socket = factory.createSocket(hostname,portNumber);
 			 final BufferedReader serverIn
 			   = new BufferedReader
 			   ( new InputStreamReader
@@ -139,7 +144,7 @@ public class Client {
 					readMessages(serverOut,serverIn);
 				}
 				if(option == 2) { // SEND
-					// TODO: Implement message sending
+					sendMessage(serverOut, serverIn);
 				}
 				if(option == 3) // QUIT
 					return;
@@ -262,6 +267,21 @@ public class Client {
 		Integer messageSelection = Util.getOption(prompt, 0, senderMessages.size(), stdin);
 		System.out.println("Message from: " + sender);
 		System.out.println(senderMessages.get(messageSelection));
+	}
+
+	private static void sendMessage(BufferedWriter serverOut, BufferedReader serverIn) throws IOException{
+		System.out.println("Recipient: ");
+		String recipient = Util.getLine(stdin);
+
+		System.out.print("Message: ");
+		//TODO: read multiple lines
+		String messageText = Util.getLine(stdin);
+
+		serverOut.write("SEND MESSAGE"); serverOut.newLine();
+		serverOut.write("RECIPIENT " + recipient); serverOut.newLine();
+		serverOut.write(messageText); serverOut.newLine();
+		serverOut.write("."); serverOut.newLine();
+		serverOut.flush();
 	}
 
 	private static String unescape(final String messageLine) {

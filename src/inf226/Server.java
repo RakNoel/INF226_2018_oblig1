@@ -5,6 +5,7 @@ import inf226.Storage.Storage.ObjectDeletedException;
 import inf226.Storage.Stored;
 import inf226.Storage.TransientStorage;
 
+import javax.net.ssl.SSLServerSocketFactory;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -80,34 +81,46 @@ public class Server {
         return (res) ? Maybe.just(pass) : Maybe.nothing();
     }
 
-    public static boolean sendMessage(Stored<User> sender, Message message) {
-        // TODO: Implement the message sending.
-        return false;
-    }
+	public static boolean sendMessage(Stored<User> sender, Message message) {
+		Maybe<Stored<User>> recipient = storage.lookup(message.recipient);
+		if(recipient.isNothing()) {
+			return false;
+		}
+		try {
+            User newUser = recipient.force().getValue().addMessage(message);
+			storage.update(storage.lookup(message.recipient).force(), newUser);
+			return true;
+		} catch (Exception e) {
+			return false;
+		}
+	}
 
-    /**
-     * Refresh the stored user object from the storage.
-     *
-     * @param user
-     * @return Refreshed value. Nothing if the object was deleted.
-     */
-    public static Maybe<Stored<User>> refresh(Stored<User> user) {
-        try {
-            return Maybe.just(storage.refresh(user));
-        } catch (ObjectDeletedException e) {
-        } catch (IOException e) {
-        }
-        return Maybe.nothing();
-    }
+	/**
+	 * Refresh the stored user object from the storage.
+	 * @param user
+	 * @return Refreshed value. Nothing if the object was deleted.
+	 */
+	public static Maybe<Stored<User>> refresh(Stored<User> user) {
+		try {
+			return Maybe.just(storage.refresh(user));
+		} catch (ObjectDeletedException e) {
+		} catch (IOException e) {
+		}
+		return Maybe.nothing();
+	}
 
-    /**
-     * @param args TODO: Parse args to get port number
-     */
+	/**
+	 * @param args TODO: Parse args to get port number
+	 */
     public static void main(String[] args) {
+        System.setProperty("javax.net.ssl.keyStore", "inf226.jks");
+        System.setProperty("javax.net.ssl.keyStorePassword", "lengdeslaarkompleksitet");
+
         final RequestProcessor processor = new RequestProcessor();
         System.out.println("Staring authentication server");
         processor.start();
-        try (final ServerSocket socket = new ServerSocket(portNumber)) {
+        SSLServerSocketFactory factory = (SSLServerSocketFactory)SSLServerSocketFactory.getDefault();
+        try (final ServerSocket socket = factory.createServerSocket(portNumber)) {
             while (!socket.isClosed()) {
                 System.err.println("Waiting for client to connect…");
                 Socket client = socket.accept();
