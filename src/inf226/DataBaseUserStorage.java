@@ -87,7 +87,6 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
             UserName username = new UserName(res.getString("uname"));
             Password passwd = new Password(res.getString("passwd"));
 
-            ImmutableLinkedList<Message> messages = new ImmutableLinkedList<>();
             query = "SELECT * FROM 'MESSAGES' WHERE user_to= ? ORDER BY id DESC";
             statement = conn.prepareStatement(query);
             statement.setString(1, key.toString());
@@ -111,27 +110,29 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
         }
     }
 
-    public void insertToken(Token token, User user) throws IOException {
+    public boolean insertToken(Token token, User user, int TTL) throws IOException {
         String query = "UPDATE USERS SET token = ?, token_expiry_date = ? WHERE uname = ?;";
         try {
             Calendar now = Calendar.getInstance();
-            now.add(Calendar.HOUR, 24 * 30);
+            now.add(Calendar.MINUTE, TTL);
 
             PreparedStatement statement = conn.prepareStatement(query);
             statement.setString(1, token.toString());
             statement.setString(2, new Timestamp(now.getTimeInMillis()).toString());
             statement.setString(3, user.getName().toString());
             statement.execute();
+            return true;
         } catch (SQLException e) {
             throw new IOException("Unable to write user to DB");
         }
     }
 
-    public Maybe<Stored<User>> lookup(Token token) throws Token.TokenExpiredException {
+    public Maybe<Stored<User>> lookup(UserName user, Token token) throws Token.TokenExpiredException {
         try {
-            String query = "SELECT * FROM 'USERS' WHERE token= ?";
+            String query = "SELECT * FROM 'USERS' WHERE token= ? AND uname = ?";
             PreparedStatement statement = conn.prepareStatement(query);
             statement.setString(1, token.toString());
+            statement.setString(2, user.toString());
             ResultSet res = statement.executeQuery();
 
             Timestamp ts = res.getTimestamp("token_expiry_date");
@@ -148,7 +149,6 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
 
             Password passwd = new Password(res.getString("passwd"));
 
-            ImmutableLinkedList<Message> messages = new ImmutableLinkedList<>();
             query = "SELECT * FROM 'MESSAGES' WHERE user_to= ? ORDER BY id DESC";
             statement = conn.prepareStatement(query);
             statement.setString(1, username.toString());

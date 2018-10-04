@@ -50,14 +50,30 @@ public class Server {
         }
     }
 
-    public static Maybe<Token> createToken(Stored<User> user) {
-        // TODO: Implement token creation
-        return Maybe.nothing();
+    /**
+     * Method that generates a token for the user
+     * @param user
+     * @param TTL Time to live for token in seconds.
+     * @return Maybe(token) saved if successful
+     */
+    public static Maybe<Token> createToken(Stored<User> user, int TTL) {
+        Token token = new Token();
+        try {
+            return (storage.insertToken(token, user.getValue(), TTL)) ? Maybe.just(token) : Maybe.nothing();
+        } catch (IOException e) {
+            return Maybe.nothing();
+        }
     }
 
-    public static Maybe<Stored<User>> authenticate(String username, Token token) {
-        // TODO: Implement user authentication
-        return Maybe.nothing();
+    /**
+     * Authenticationmethod with the token and username instead of password.
+     * @param username Username of user to auth.
+     * @param token The given token which whould be stored for that user
+     * @return Maybe(User) if the token mathches the given username
+     * @throws Token.TokenExpiredException if token is too old(expired)
+     */
+    public static Maybe<Stored<User>> authenticate(UserName username, Token token) throws Token.TokenExpiredException {
+        return storage.lookup(username, token);
     }
 
     /**
