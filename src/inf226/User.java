@@ -115,8 +115,8 @@ class Password {
         this.password = pass;
     }
 
-    Password(String pass) throws inf226.Maybe.NothingException {
-        this.password = Server.validatePassword(pass).force();
+    Password(String pass) {
+        this.password = pass;
     }
 
     public boolean equals(Password password) {
