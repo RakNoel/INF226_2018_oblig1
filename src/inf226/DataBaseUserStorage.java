@@ -2,10 +2,13 @@ package inf226;
 
 import inf226.Storage.Id;
 import inf226.Storage.KeyedStorage;
+import inf226.Storage.Storage;
 import inf226.Storage.Stored;
 
 import java.io.IOException;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.TreeMap;
 
 /**
  * Class used to securely store the users in a longtime storage
@@ -18,12 +21,13 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
 
     private static DataBaseUserStorage single_instance = null;
 
+    private final TreeMap<Id, Stored<User>> memory;
     private Connection conn;
     private String url = "jdbc:sqlite:users.sqlite";
-
     private final Id.Generator id_generator;
 
     private DataBaseUserStorage() {
+        memory = new TreeMap<>();
         id_generator = new Id.Generator();
         try {
             conn = DriverManager.getConnection(url);
@@ -54,13 +58,18 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
      * @throws SQLException
      */
     private void fillDatabase() throws SQLException {
-        String query = "CREATE TABLE USERS (uname Varchar(30), passwd Varchar(50), salt char(50));";
         assert this.conn != null;
-        conn.prepareStatement(query).execute();
+        ArrayList<String> querys = new ArrayList<>();
+        querys.add("CREATE TABLE USERS (uname Varchar(30) PRIMARY KEY, passwd Varchar(50), salt char(50));");
+        querys.add("CREATE TABLE MESSAGES(id INTEGER PRIMARY KEY ASC,user_to Varchar(30),user_from Varchar(30),msg TEXT,sentTime DateTime,FOREIGN KEY(user_to) REFERENCES USERS(uname),FOREIGN KEY(user_from) REFERENCES USERS(uname));");
+
+        for (String q : querys) {
+            conn.prepareStatement(q).execute();
+        }
     }
 
     @Override
-    public Maybe<Stored<User>> lookup(UserName key) {
+    public synchronized Maybe<Stored<User>> lookup(UserName key) {
         try {
             String query = "SELECT * FROM 'USERS' WHERE uname= ?";
             PreparedStatement statement = conn.prepareStatement(query);
@@ -78,7 +87,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
         }
     }
 
-    public Maybe<String> getSalt(UserName key) {
+    public synchronized Maybe<String> getSalt(UserName key) {
         try {
             String query = "SELECT * FROM 'USERS' WHERE uname= ?";
             PreparedStatement statement = conn.prepareStatement(query);
@@ -92,7 +101,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
     }
 
     @Override
-    public Stored<User> save(User value) throws IOException {
+    public synchronized Stored<User> save(User value) throws IOException {
         String query = "INSERT INTO USERS(uname, passwd, salt)  VALUES(?,?,?)";
         try {
             PreparedStatement statement = conn.prepareStatement(query);
@@ -101,24 +110,63 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
             statement.setString(3, value.getSalt());
 
             statement.execute();
-            return new Stored<>(id_generator, value);
+            Stored<User> h = new Stored<>(id_generator, value);
+            memory.put(h.id(), h);
+            return h;
         } catch (SQLException e) {
             throw new IOException("Unable to write user to DB");
         }
     }
 
     @Override
-    public Stored<User> refresh(Stored<User> old) throws ObjectDeletedException, IOException {
-        return null;
+    public Stored<User> refresh(Stored<User> old) throws ObjectDeletedException {
+        Stored<User> newValue = memory.get(old.id());
+        if (newValue == null)
+            throw new ObjectDeletedException(old.id());
+        return newValue;
     }
 
     @Override
-    public Stored<User> update(Stored<User> old, User newValue) throws ObjectModifiedException, ObjectDeletedException, IOException {
-        return null;
+    public synchronized Stored<User> update(Stored<User> old, User newValue)
+            throws ObjectDeletedException, Storage.ObjectModifiedException {
+        Stored<User> stored = memory.get(old.id());
+        if (stored == null) {
+            throw new Storage.ObjectDeletedException(old.id());
+        }
+
+        if (!stored.equals(old)) {
+            throw new Storage.ObjectModifiedException(stored);
+        }
+
+        try {
+            Message last = newValue.getMessages().iterator().next();
+            String query = "INSERT INTO MESSAGES(user_from, user_to, msg) VALUES(?,?,?)";
+            PreparedStatement statement = conn.prepareStatement(query);
+            statement.setString(1, last.sender);
+            statement.setString(2, last.recipient);
+            statement.setString(3, last.message);
+
+            statement.execute();
+        } catch (SQLException | NullPointerException ex) {
+            throw new Storage.ObjectDeletedException(old.id());
+        }
+
+        Stored<User> newStored = new Stored<>(old, newValue);
+        memory.put(old.id(), newStored);
+
+        return newStored;
     }
 
-    @Override
-    public void delete(Stored<User> old) throws ObjectModifiedException, ObjectDeletedException, IOException {
+    public synchronized void delete(Stored<User> old) throws ObjectDeletedException, ObjectModifiedException {
+        Stored<User> stored = memory.get(old.id());
+        if (stored == null) {
+            throw new Storage.ObjectDeletedException(old.id());
+        }
 
+        if (!stored.equals(old)) {
+            throw new Storage.ObjectModifiedException(stored);
+        }
+
+        memory.remove(old.id());
     }
 }

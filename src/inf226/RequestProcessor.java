@@ -240,7 +240,7 @@ public final class RequestProcessor extends Thread {
                     new SecureRandom().nextBytes(salt);
                     for (byte b : salt) { sbldr.append((char)b); }
 
-                    final Password password = new Password(lineTwo.substring("PASS ".length()), username, sbldr.toString());
+                    final Password password = new Password(lineTwo.substring("PASS ".length()), sbldr.toString());
                     return Server.register(username, password, sbldr.toString());
                 } catch (NothingException e) {
                     return Maybe.nothing();
@@ -266,7 +266,7 @@ public final class RequestProcessor extends Thread {
                 try {
                     final UserName username = new UserName(lineOne.substring("USER ".length()));
                     final String salt = db.getSalt(username).force();
-                    final Password password = new Password(lineTwo.substring("PASS ".length()), username, salt);
+                    final Password password = new Password(lineTwo.substring("PASS ".length()), salt);
                     System.err.println("Login request from user: " + username);
                     return Server.authenticate(username, password);
                 } catch (NothingException e) {

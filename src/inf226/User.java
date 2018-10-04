@@ -91,19 +91,16 @@ class Password {
     private final String password;
 
     /**
-     * Constructor will create a password-hash with the same result for the same input every time,
-     * for the same user.
+     * Constructor will create a password-hash with the same result for the same input every time
      * @param pass Password to hash
-     * @param usr Username of user
      * @param salt Random string (should allways be the same for same hash) to add security
      * @throws inf226.Maybe.NothingException
      */
-    Password(String pass, UserName usr, String salt) throws inf226.Maybe.NothingException {
-        String h = usr.toString();
-        h += Server.validatePassword(pass).force();
+    Password(String pass, String salt) throws inf226.Maybe.NothingException {
+        String h = Server.validatePassword(pass).force();
         h += salt;
         try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
+            MessageDigest md = MessageDigest.getInstance("SHA-512");
             md.update(h.getBytes());
             byte[] bytes = md.digest();
             StringBuilder sb = new StringBuilder();
