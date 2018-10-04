@@ -117,105 +117,117 @@ public final class RequestProcessor extends Thread {
         }
 
 
-        /**
-         * Handle a single request
-         *
-         * @param in  Input from the client.
-         * @param out Output to the client.
-         * @throws IOException If the user hangs up unexpectedly
-         */
-        private void handle(final BufferedReader in, final BufferedWriter out) throws IOException {
-            final String requestType = Util.getLine(in);
-            System.err.println("Request type: " + requestType);
+		/**
+		 * Handle a single request
+		 * @param in Input from the client.
+		 * @param out Output to the client.
+		 * @throws IOException If the user hangs up unexpectedly
+		 */
+		private void handle(final BufferedReader in, final BufferedWriter out) throws IOException {
+	    	final String requestType = Util.getLine(in);
+	    	System.err.println("Request type: " + requestType);
 
-            if (requestType.equals("REQUEST TOKEN")) {
-                try {
-                    final Token token = Server.createToken(user.force()).force();
-                    out.write("TOKEN " + token.stringRepresentation());
-                } catch (NothingException e) {
-                    out.write("FAILED");
-                }
-                out.newLine();
-                out.flush();
-                return;
-            }
-            if (requestType.equals("REGISTER")) {
-                System.err.println("Handling registration request");
-                user = handleRegistration(in);
-                try {
-                    out.write("REGISTERED " + user.force().getValue().getName());
-                    System.err.println("Registration request succeeded.");
-                } catch (NothingException e) {
-                    out.write("FAILED");
-                    System.err.println("Registration request failed.");
-                }
-                out.newLine();
-                out.flush();
-                return;
-            }
-            if (requestType.equals("LOGIN")) {
-                user = handleLogin(in);
-                try {
-                    out.write("LOGGED IN " + user.force().getValue().getName());
-                } catch (NothingException e) {
-                    out.write("FAILED");
-                }
-                out.newLine();
-                out.flush();
-                return;
-            }
-            if (requestType.equals("SEND MESSAGE")) {
-                try {
-                    final Maybe<Message> message = handleMessage(user.force().getValue().getName().toString(), in);
-                    if (Server.sendMessage(user.force(), message.force())) {
-                        out.write("MESSAGE SENT");
-                    } else {
-                        out.write("FAILED");
-                    }
-                } catch (NothingException e) {
-                    out.write("FAILED");
-                }
-                out.newLine();
-                out.flush();
-                return;
-            }
-            if (requestType.equals("READ MESSAGES")) {
-                System.err.println("Handling a read message request");
-                try {
-                    // Refresh the user object in order to get new messages.
-                    user = Server.refresh(user.force());
-                    for (Message m : user.force().getValue().getMessages()) {
-                        System.err.println("Sending message from " + m.sender);
-                        out.write("MESSAGE FROM " + m.sender);
-                        out.newLine();
-                        out.write(m.message);
-                        out.newLine();
-                        out.write(".");
-                        out.newLine();
-                        out.flush();
-                    }
-                    out.write("END OF MESSAGES");
+	    	if(requestType.equals("REQUEST TOKEN")) {
+	    		try {
+					final Token token = Server.createToken(user.force()).force();
+					out.write("TOKEN " + token.stringRepresentation());
+				} catch (NothingException e) {
+					out.write("FAILED");
+				}
+	    		out.newLine();
+	    		out.flush();
+	    		return;
+	    	}
+	    	if(requestType.equals("REGISTER")) {
+	    		System.err.println("Handling registration request");
+	    		user = handleRegistration(in);
+	    		try {
+					out.write("REGISTERED " + user.force().getValue().getName());
+		    		System.err.println("Registration request succeeded.");
+				} catch (NothingException e) {
+					out.write("FAILED");
+		    		System.err.println("Registration request failed.");
+				}
+	    		out.newLine();
+	    		out.flush();
+	    		return;
+	    	}
+	    	if(requestType.equals("LOGIN")) {
+	    		user = handleLogin(in);
+	    		try {
+					out.write("LOGGED IN " + user.force().getValue().getName());
+				} catch (NothingException e) {
+					out.write("FAILED");
+				}
+	    		out.newLine();
+	    		out.flush();
+	    		return;
+	    	}
+	    	if(requestType.equals("SEND MESSAGE")) {
+	    		try {
+	    			final Maybe<Message> message = handleMessage(user.force().getValue().getName(),in);
+	    			if(Server.sendMessage(user.force(),message.force())) {
+	    				out.write("MESSAGE SENT");
+	    			} else {
+	    				out.write("FAILED");
+	    			}
+				} catch (NothingException e) {
+					out.write("FAILED");
+				}
+	    		out.newLine();
+	    		out.flush();
+	    		return;
+	    	}
+	    	if(requestType.equals("READ MESSAGES")) {
+	    		System.err.println("Handling a read message request");
+	    		try {
+	    			// Refresh the user object in order to get new messages.
+		    		user = Server.refresh(user.force());
+	    			for (Message m : user.force().getValue().getMessages()) {
+	    				System.err.println("Sending message from " + m.sender);
+	    				out.write("MESSAGE FROM " + m.sender); out.newLine();
+	    				out.write(m.message);out.newLine();
+	    				out.write(".");out.newLine();
+	    				out.flush();
+	    			}
+	    			out.write("END OF MESSAGES");
 
-                } catch (NothingException e) {
-                    out.write("FAILED");
-                }
-                out.newLine();
-                out.flush();
-                return;
-            }
-        }
+				} catch (NothingException e) {
+					out.write("FAILED");
+				}
+	    		out.newLine();
+	    		out.flush();
+	    		return;
+	    	}
+	    }
 
-        /**
-         * Handle a message send request
-         *
-         * @param username The name of the user sending the message.
-         * @param in       Reader to read the message data from.
-         * @return Message object.
-         */
-        private static Maybe<Message> handleMessage(String username, BufferedReader in) {
-            // TODO: Handle message input
-            return Maybe.nothing();
-        }
+		/**
+		 * Handle a message send request
+		 * @param username The name of the user sending the message.
+		 * @param in Reader to read the message data from.
+		 * @return Message object.
+		 */
+		private static Maybe<Message> handleMessage(UserName username, BufferedReader in) throws IOException {
+			final String lineOne = Util.getLine(in);
+			final String lineTwo = Util.getLine(in);
+			final String dotLine = Util.getLine(in);
+
+			if (lineOne.startsWith("RECIPIENT ")) {
+                try {
+                    final Maybe<UserName> recipient = Maybe.just(new UserName(lineOne.substring("RECIPIENT ".length(), lineOne.length())));
+                    final Maybe<String> messageText = Maybe.just(lineTwo);
+
+                    //TODO: is it possible to get registered user?
+					User user = new User(username, new Password("password"));
+					final Maybe<Message> message = Maybe.just(new Message(user, recipient.force(), messageText.force()));
+					return message;
+				} catch (Exception e){
+					return Maybe.nothing();
+				}
+			} else {
+				return Maybe.nothing();
+			}
+		}
 
         /**
          * Handle a registration request.

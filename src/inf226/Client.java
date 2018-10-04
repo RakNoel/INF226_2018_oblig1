@@ -141,7 +141,7 @@ public class Client {
 					readMessages(serverOut,serverIn);
 				}
 				if(option == 2) { // SEND
-					// TODO: Implement message sending
+					sendMessage(serverOut, serverIn);
 				}
 				if(option == 3) // QUIT
 					return;
@@ -264,6 +264,21 @@ public class Client {
 		Integer messageSelection = Util.getOption(prompt, 0, senderMessages.size(), stdin);
 		System.out.println("Message from: " + sender);
 		System.out.println(senderMessages.get(messageSelection));
+	}
+
+	private static void sendMessage(BufferedWriter serverOut, BufferedReader serverIn) throws IOException{
+		System.out.println("Recipient: ");
+		String recipient = Util.getLine(stdin);
+
+		System.out.print("Message: ");
+		//TODO: read multiple lines
+		String messageText = Util.getLine(stdin);
+
+		serverOut.write("SEND MESSAGE"); serverOut.newLine();
+		serverOut.write("RECIPIENT " + recipient); serverOut.newLine();
+		serverOut.write(messageText); serverOut.newLine();
+		serverOut.write("."); serverOut.newLine();
+		serverOut.flush();
 	}
 
 	private static String unescape(final String messageLine) {

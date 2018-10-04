@@ -73,7 +73,7 @@ class UserName implements Comparable<UserName> {
 
     @Override
     public int compareTo(UserName userName) {
-        return this.toString().compareTo(username);
+        return this.toString().compareTo(userName.toString());
     }
 }
 
