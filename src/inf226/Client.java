@@ -24,6 +24,9 @@ public class Client {
 	static final BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
 
 	public static void main(String[] args) {
+		System.setProperty("javax.net.ssl.trustStore", "inf226.jks");
+		System.setProperty("javax.net.ssl.trustStorePassword", "lengdeslaarkompleksitet");
+
 		final String hostname = (args.length<1)?"localhost":args[0];
 		System.out.println("Welcome to assignment 1.");
 		System.out.println("This is the client program which will allow you to register users,");

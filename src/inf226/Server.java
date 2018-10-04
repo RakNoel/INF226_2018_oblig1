@@ -113,22 +113,26 @@ public class Server {
 	/**
 	 * @param args TODO: Parse args to get port number
 	 */
-	public static void main(String[] args) {
-		final RequestProcessor processor = new RequestProcessor();
-		System.out.println("Staring authentication server");
-		processor.start();
-		try (final ServerSocket socket = new ServerSocket(portNumber)) {
-            while(!socket.isClosed()) {
-            	System.err.println("Waiting for client to connect…");
-        		Socket client = socket.accept();
-            	System.err.println("Client connected.");
-        		processor.addRequest(new RequestProcessor.Request(client));
-			}
-		} catch (IOException e) {
-			System.out.println("Could not listen on port " + portNumber);
-			e.printStackTrace();
-		}
-	}
+    public static void main(String[] args) {
+        System.setProperty("javax.net.ssl.keyStore", "inf226.jks");
+        System.setProperty("javax.net.ssl.keyStorePassword", "lengdeslaarkompleksitet");
+
+        final RequestProcessor processor = new RequestProcessor();
+        System.out.println("Staring authentication server");
+        processor.start();
+        SSLServerSocketFactory factory = (SSLServerSocketFactory)SSLServerSocketFactory.getDefault();
+        try (final ServerSocket socket = factory.createServerSocket(portNumber)) {
+            while (!socket.isClosed()) {
+                System.err.println("Waiting for client to connect…");
+                Socket client = socket.accept();
+                System.err.println("Client connected.");
+                processor.addRequest(new RequestProcessor.Request(client));
+            }
+        } catch (IOException e) {
+            System.out.println("Could not listen on port " + portNumber);
+            e.printStackTrace();
+        }
+    }
 
 
 }
