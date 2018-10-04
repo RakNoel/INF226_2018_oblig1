@@ -8,6 +8,7 @@ import inf226.Storage.Stored;
 import java.io.IOException;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.TreeMap;
 
 /**
@@ -60,7 +61,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
     private void fillDatabase() throws SQLException {
         assert this.conn != null;
         ArrayList<String> querys = new ArrayList<>();
-        querys.add("CREATE TABLE USERS (uname Varchar(30) PRIMARY KEY, passwd Varchar(50), salt char(50), token char(16));");
+        querys.add("CREATE TABLE USERS (uname Varchar(30) PRIMARY KEY, passwd Varchar(50), salt char(50), token char(16), token_expiry_date TIMESTAMP);");
         querys.add("CREATE TABLE MESSAGES(id INTEGER PRIMARY KEY ASC,user_to Varchar(30),user_from Varchar(30),msg TEXT,FOREIGN KEY(user_to) REFERENCES USERS(uname),FOREIGN KEY(user_from) REFERENCES USERS(uname));");
 
         for (String q : querys) {
@@ -104,11 +105,15 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
     }
 
     public void insertToken(Token token, User user) throws IOException {
-        String query = "UPDATE USERS SET token = ? WHERE uname = ?;";
+        String query = "UPDATE USERS SET token = ?, token_expiry_date = ? WHERE uname = ?;";
         try {
+            Calendar now = Calendar.getInstance();
+            now.add(Calendar.HOUR, 24*30);
+
             PreparedStatement statement = conn.prepareStatement(query);
             statement.setString(1, token.toString());
-            statement.setString(2, user.getName().toString());
+            statement.setString(2, new Timestamp(now.getTimeInMillis()).toString());
+            statement.setString(3, user.getName().toString());
             statement.execute();
         } catch (SQLException e) {
             throw new IOException("Unable to write user to DB");
@@ -121,6 +126,11 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
             PreparedStatement statement = conn.prepareStatement(query);
             statement.setString(1, token.toString());
             ResultSet res = statement.executeQuery();
+
+            Timestamp ts = res.getTimestamp("token_expiry_date");
+            if (ts.before(new Timestamp(System.currentTimeMillis()))){
+                return Maybe.nothing();
+            }
 
             String salt = res.getString("salt");
             UserName username = new UserName(res.getString("uname"));
