@@ -5,8 +5,11 @@ import inf226.Storage.Stored;
 
 import javax.net.ssl.SSLServerSocketFactory;
 import java.io.IOException;
+import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
+import java.security.NoSuchAlgorithmException;
 
 /**
  * The Server main class. This implements all critical server functions.
@@ -120,7 +123,12 @@ public class Server {
         final RequestProcessor processor = new RequestProcessor();
         System.out.println("Staring authentication server");
         processor.start();
-        SSLServerSocketFactory factory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
+        SSLServerSocketFactory factory = null;
+        try{
+            factory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
+        } catch(Exception e){
+            System.out.println("Catched exception " + e);
+        }
         try (final ServerSocket socket = factory.createServerSocket(portNumber)) {
             while (!socket.isClosed()) {
                 System.err.println("Waiting for client to connect…");
@@ -128,8 +136,14 @@ public class Server {
                 System.err.println("Client connected.");
                 processor.addRequest(new RequestProcessor.Request(client));
             }
-        } catch (IOException e) {
+        } catch (BindException e) {
             System.out.println("Could not listen on port " + portNumber);
+            e.printStackTrace();
+        } catch (SocketException e){
+            System.out.println("Failed to load keystore, use keytool to generate a JKS keystore named \"inf226.jks\""
+                                + " with storepass and keypass \"lengdeslaarkompleksitet\"");
+        } catch (IOException e){
+            System.out.println("Failed to accept incoming connection");
             e.printStackTrace();
         }
     }
