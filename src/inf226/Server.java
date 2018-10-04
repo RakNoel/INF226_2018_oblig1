@@ -27,14 +27,7 @@ public class Server {
     public static Maybe<Stored<User>> authenticate(UserName username, Password password) {
         try {
             Stored<User> u = storage.lookup(username).force();
-
-            if (u.getValue().testPassword(password)) {
-                storage.login(u);
-                return Maybe.just(u);
-            } else {
-                return Maybe.nothing();
-            }
-
+            return (u.getValue().testPassword(password)) ? Maybe.just(u) : Maybe.nothing();
         } catch (inf226.Maybe.NothingException ex) {
             return Maybe.nothing();
         }
