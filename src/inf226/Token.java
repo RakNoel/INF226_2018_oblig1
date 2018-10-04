@@ -1,14 +1,19 @@
 package inf226;
 
+import java.security.SecureRandom;
+import java.util.Base64;
+
 public final class Token {
 
-	// TODO: This should be an immutable class representing a token.
+	private final byte[] token;
 
 	/**
 	 * The constructor should generate a random 128 bit token
 	 */
 	public Token(){
-		// TODO:  generate a random 128 bit token
+		token = new byte[16];
+		SecureRandom random = new SecureRandom();
+		random.nextBytes(token);
 	}
 	
 	/**
@@ -16,6 +21,6 @@ public final class Token {
 	 * @return A Base64 encoding of the token
 	 */
 	public String stringRepresentation() {
-		return null;
+		return Base64.getEncoder().encodeToString(token);
 	}
 }
