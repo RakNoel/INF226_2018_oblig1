@@ -132,7 +132,7 @@ public final class RequestProcessor extends Thread {
 
 	    	if(requestType.equals("REQUEST TOKEN")) {
 	    		try {
-					final Token token = Server.createToken(user.force()).force();
+					final Token token = Server.createToken(user.force(), 600).force();
 					out.write("TOKEN " + token.stringRepresentation());
 				} catch (NothingException e) {
 					out.write("FAILED");
