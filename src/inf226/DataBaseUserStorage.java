@@ -142,8 +142,8 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
             Message last = newValue.getMessages().iterator().next();
             String query = "INSERT INTO MESSAGES(user_from, user_to, msg) VALUES(?,?,?)";
             PreparedStatement statement = conn.prepareStatement(query);
-            statement.setString(1, last.sender);
-            statement.setString(2, last.recipient);
+            statement.setString(1, last.sender.toString());
+            statement.setString(2, last.recipient.toString());
             statement.setString(3, last.message);
 
             statement.execute();
