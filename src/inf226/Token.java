@@ -35,4 +35,30 @@ public final class Token {
 	public String stringRepresentation() {
 		return Base64.getEncoder().encodeToString(token);
 	}
+
+	public static class TokenExpiredException extends Exception {
+		private static final long serialVersionUID = 8141663032347379968L;
+
+		public TokenExpiredException() {
+			super("Token timestamp has expired");
+		}
+
+		public TokenExpiredException(String msg) {
+			super(msg);
+		}
+
+	}
+
+	public static class TokenInvalidException extends Exception {
+		private static final long serialVersionUID = 8141333032347379968L;
+
+		public TokenInvalidException() {
+			super("Token invalid");
+		}
+
+		public TokenInvalidException(String msg) {
+			super(msg);
+		}
+
+	}
 }

@@ -120,7 +120,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
         }
     }
 
-    public Maybe<Stored<User>> lookup(Token token) {
+    public Maybe<Stored<User>> lookup(Token token) throws Token.TokenExpiredException {
         try {
             String query = "SELECT * FROM 'USERS' WHERE token= ?";
             PreparedStatement statement = conn.prepareStatement(query);
@@ -129,7 +129,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
 
             Timestamp ts = res.getTimestamp("token_expiry_date");
             if (ts.before(new Timestamp(System.currentTimeMillis()))){
-                return Maybe.nothing();
+                throw new Token.TokenExpiredException();
             }
 
             String salt = res.getString("salt");
