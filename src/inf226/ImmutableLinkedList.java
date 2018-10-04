@@ -22,14 +22,14 @@ public class ImmutableLinkedList<T> implements Iterable<T> {
 	}
 
 	public ImmutableLinkedList(final T head, final ImmutableLinkedList<T> tail) {
-		this.head = Maybe.just(new Pair<T,ImmutableLinkedList<T>>(head,tail));
+		this.head = Maybe.just(new Pair<>(head,tail));
 		this.size = tail.size + 1;
 	}
 	Maybe<T> getHead() {
-		return head.map(Pair.<T,ImmutableLinkedList<T>>firstProjection());
+		return head.map(Pair.firstProjection());
 	}
 	Maybe<ImmutableLinkedList<T>> getTail() {
-		return head.map(Pair.<T,ImmutableLinkedList<T>>secondProjection());
+		return head.map(Pair.secondProjection());
 	}
 
 	@Override

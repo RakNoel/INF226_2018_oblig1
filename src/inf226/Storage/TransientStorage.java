@@ -22,8 +22,8 @@ public class TransientStorage<K, C> implements KeyedStorage<K, C> {
 
     public TransientStorage(final Function<C, K> computeKey) {
         id_generator = new Id.Generator();
-        memory = new TreeMap<Id, Stored<C>>();
-        keytable = new TreeMap<K, Id>();
+        memory = new TreeMap<>();
+        keytable = new TreeMap<>();
         this.computeKey = computeKey;
     }
 
