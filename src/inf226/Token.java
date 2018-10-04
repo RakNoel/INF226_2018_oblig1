@@ -12,10 +12,22 @@ public final class Token {
 	 */
 	public Token(){
 		token = new byte[16];
-		SecureRandom random = new SecureRandom();
-		random.nextBytes(token);
+		new SecureRandom().nextBytes(token);
 	}
-	
+
+	public Token(String token){
+		this.token = token.getBytes();
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder strbldr = new StringBuilder();
+		for (byte t : token) {
+			strbldr.append((char)t);
+		}
+		return strbldr.toString();
+	}
+
 	/**
 	 * This method should return the Base64 encoding of the token
 	 * @return A Base64 encoding of the token

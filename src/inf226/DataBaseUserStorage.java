@@ -60,7 +60,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
     private void fillDatabase() throws SQLException {
         assert this.conn != null;
         ArrayList<String> querys = new ArrayList<>();
-        querys.add("CREATE TABLE USERS (uname Varchar(30) PRIMARY KEY, passwd Varchar(50), salt char(50));");
+        querys.add("CREATE TABLE USERS (uname Varchar(30) PRIMARY KEY, passwd Varchar(50), salt char(50), token char(16));");
         querys.add("CREATE TABLE MESSAGES(id INTEGER PRIMARY KEY ASC,user_to Varchar(30),user_from Varchar(30),msg TEXT,FOREIGN KEY(user_to) REFERENCES USERS(uname),FOREIGN KEY(user_from) REFERENCES USERS(uname));");
 
         for (String q : querys) {
@@ -92,6 +92,52 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
                 String sender = res.getString("user_from");
                 String message = res.getString("msg");
                 Message h = new Message(new User(new UserName(sender), new Password("123"), ""), username, message);
+                recipientUser = recipientUser.addMessage(h);
+            }
+
+            Stored<User> stored = new Stored<>(id_generator, recipientUser);
+            memory.put(stored.id(), stored);
+            return Maybe.just(stored);
+        } catch (SQLException | Message.Invalid | inf226.Maybe.NothingException e) {
+            return Maybe.nothing();
+        }
+    }
+
+    public void insertToken(Token token, User user) throws IOException {
+        String query = "UPDATE USERS SET token = ? WHERE uname = ?;";
+        try {
+            PreparedStatement statement = conn.prepareStatement(query);
+            statement.setString(1, token.toString());
+            statement.setString(2, user.getName().toString());
+            statement.execute();
+        } catch (SQLException e) {
+            throw new IOException("Unable to write user to DB");
+        }
+    }
+
+    public Maybe<Stored<User>> lookup(Token token) {
+        try {
+            String query = "SELECT * FROM 'USERS' WHERE token= ?";
+            PreparedStatement statement = conn.prepareStatement(query);
+            statement.setString(1, token.toString());
+            ResultSet res = statement.executeQuery();
+
+            String salt = res.getString("salt");
+            UserName username = new UserName(res.getString("uname"));
+            Password passwd = new Password(res.getString("passwd"));
+
+            ImmutableLinkedList<Message> messages = new ImmutableLinkedList<>();
+            query = "SELECT * FROM 'MESSAGES' WHERE user_to= ? ORDER BY id DESC";
+            statement = conn.prepareStatement(query);
+            statement.setString(1, username.toString());
+            res = statement.executeQuery();
+
+            User recipientUser = new User(username, passwd, salt);
+
+            while (res.next()){
+                String sender = res.getString("user_from");
+                String message = res.getString("msg");
+                Message h = new Message(new User(new UserName(sender), new Password(""), ""), username, message);
                 recipientUser = recipientUser.addMessage(h);
             }
 
