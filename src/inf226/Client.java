@@ -20,17 +20,17 @@ public class Client {
     static String hostname;
 
     public static void main(String[] args) {
-        try{
+        try {
             if (args.length == 3) {
                 portNumber = Integer.parseInt(args[2]);
                 hostname = args[1];
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             portNumber = 1337;
             hostname = "localhost";
         }
 
-            System.setProperty("javax.net.ssl.trustStore", "inf226.jks");
+        System.setProperty("javax.net.ssl.trustStore", "inf226.jks");
         System.setProperty("javax.net.ssl.trustStorePassword", "lengdeslaarkompleksitet");
         System.out.println("Welcome to assignment 1.");
         System.out.println("This is the client program which will allow you to register users,");
