@@ -14,7 +14,7 @@ import java.net.Socket;
  * @author INF226
  */
 public class Server {
-    private static final int portNumber = 1337;
+    private static int portNumber = 1337;
     private static final DataBaseUserStorage storage = DataBaseUserStorage.getInstance();
 
     /**
@@ -126,10 +126,15 @@ public class Server {
         return Maybe.nothing();
     }
 
-    /**
-     * @param args TODO: Parse args to get port number
-     */
     public static void main(String[] args) {
+        if (args.length > 0){
+            try{
+                portNumber = Integer.parseInt(args[2]);
+            }catch (Exception e){
+                portNumber = 1337;
+            }
+        }
+
         System.setProperty("javax.net.ssl.keyStore", "inf226.jks");
         System.setProperty("javax.net.ssl.keyStorePassword", "lengdeslaarkompleksitet");
 
