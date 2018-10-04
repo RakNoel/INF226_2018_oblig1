@@ -27,7 +27,14 @@ public class Server {
     public static Maybe<Stored<User>> authenticate(UserName username, Password password) {
         try {
             Stored<User> u = storage.lookup(username).force();
-            return (u.getValue().testPassword(password)) ? Maybe.just(u) : Maybe.nothing();
+
+            if (u.getValue().testPassword(password)) {
+                storage.login(u);
+                return Maybe.just(u);
+            } else {
+                return Maybe.nothing();
+            }
+
         } catch (inf226.Maybe.NothingException ex) {
             return Maybe.nothing();
         }
@@ -82,14 +89,14 @@ public class Server {
         return (res) ? Maybe.just(pass) : Maybe.nothing();
     }
 
-    public static boolean sendMessage(Stored<User> sender, Message message) {
+    public static boolean sendMessage(Message message) {
         Maybe<Stored<User>> recipient = storage.lookup(message.recipient);
         if (recipient.isNothing()) {
             return false;
         }
         try {
             User newUser = recipient.force().getValue().addMessage(message);
-            storage.update(storage.lookup(message.recipient).force(), newUser);
+            storage.update(recipient.force(), newUser);
             return true;
         } catch (Exception e) {
             return false;

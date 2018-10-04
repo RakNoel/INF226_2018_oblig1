@@ -64,7 +64,7 @@ public final class User {
      * @return Updated user object.
      */
     public User addMessage(Message m) {
-        return new User(name, passwd, salt, new ImmutableLinkedList<Message>(m, log));
+        return new User(name, passwd, salt, new ImmutableLinkedList<>(m, log));
     }
 
 }

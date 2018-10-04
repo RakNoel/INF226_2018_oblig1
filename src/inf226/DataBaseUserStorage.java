@@ -61,7 +61,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
         assert this.conn != null;
         ArrayList<String> querys = new ArrayList<>();
         querys.add("CREATE TABLE USERS (uname Varchar(30) PRIMARY KEY, passwd Varchar(50), salt char(50));");
-        querys.add("CREATE TABLE MESSAGES(id INTEGER PRIMARY KEY ASC,user_to Varchar(30),user_from Varchar(30),msg TEXT,sentTime DateTime,FOREIGN KEY(user_to) REFERENCES USERS(uname),FOREIGN KEY(user_from) REFERENCES USERS(uname));");
+        querys.add("CREATE TABLE MESSAGES(id INTEGER PRIMARY KEY ASC,user_to Varchar(30),user_from Varchar(30),msg TEXT,FOREIGN KEY(user_to) REFERENCES USERS(uname),FOREIGN KEY(user_from) REFERENCES USERS(uname));");
 
         for (String q : querys) {
             conn.prepareStatement(q).execute();
@@ -69,7 +69,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
     }
 
     @Override
-    public synchronized Maybe<Stored<User>> lookup(UserName key) {
+    public Maybe<Stored<User>> lookup(UserName key) {
         try {
             String query = "SELECT * FROM 'USERS' WHERE uname= ?";
             PreparedStatement statement = conn.prepareStatement(query);
@@ -79,10 +79,26 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
             String salt = res.getString("salt");
             UserName username = new UserName(res.getString("uname"));
             Password passwd = new Password(res.getString("passwd"));
-            Stored<User> stored = new Stored<>(id_generator, new User(username, passwd, salt));
 
+            ImmutableLinkedList<Message> messages = new ImmutableLinkedList<>();
+            query = "SELECT * FROM 'MESSAGES' WHERE user_to= ? ORDER BY id DESC";
+            statement = conn.prepareStatement(query);
+            statement.setString(1, key.toString());
+            res = statement.executeQuery();
+
+            User recipientUser = new User(username, passwd, salt);
+
+            while (res.next()){
+                String sender = res.getString("user_from");
+                String message = res.getString("msg");
+                Message h = new Message(new User(new UserName(sender), new Password("123"), ""), username, message);
+                recipientUser = recipientUser.addMessage(h);
+            }
+
+            Stored<User> stored = new Stored<>(id_generator, recipientUser);
+            memory.put(stored.id(), stored);
             return Maybe.just(stored);
-        } catch (SQLException | inf226.Maybe.NothingException e) {
+        } catch (SQLException | Message.Invalid | inf226.Maybe.NothingException e) {
             return Maybe.nothing();
         }
     }
@@ -108,12 +124,12 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
             statement.setString(1, value.getName().toString());
             statement.setString(2, value.getPass().toString());
             statement.setString(3, value.getSalt());
-
             statement.execute();
-            Stored<User> h = new Stored<>(id_generator, value);
+
+            Stored<User> h = lookup(value.getName()).force();
             memory.put(h.id(), h);
             return h;
-        } catch (SQLException e) {
+        } catch (SQLException | Maybe.NothingException e) {
             throw new IOException("Unable to write user to DB");
         }
     }
@@ -127,8 +143,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
     }
 
     @Override
-    public synchronized Stored<User> update(Stored<User> old, User newValue)
-            throws ObjectDeletedException, Storage.ObjectModifiedException {
+    public synchronized Stored<User> update(Stored<User> old, User newValue) throws ObjectDeletedException, Storage.ObjectModifiedException {
         Stored<User> stored = memory.get(old.id());
         if (stored == null) {
             throw new Storage.ObjectDeletedException(old.id());
@@ -145,7 +160,6 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
             statement.setString(1, last.sender.toString());
             statement.setString(2, last.recipient.toString());
             statement.setString(3, last.message);
-
             statement.execute();
         } catch (SQLException | NullPointerException ex) {
             throw new Storage.ObjectDeletedException(old.id());

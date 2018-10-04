@@ -169,7 +169,7 @@ public final class RequestProcessor extends Thread {
 	    	if(requestType.equals("SEND MESSAGE")) {
 	    		try {
 	    			final Maybe<Message> message = handleMessage(user.force().getValue().getName(),in);
-	    			if(Server.sendMessage(user.force(),message.force())) {
+	    			if(Server.sendMessage(message.force())) {
 	    				out.write("MESSAGE SENT");
 	    			} else {
 	    				out.write("FAILED");
@@ -213,16 +213,15 @@ public final class RequestProcessor extends Thread {
 		private static Maybe<Message> handleMessage(UserName username, BufferedReader in) throws IOException {
 			final String lineOne = Util.getLine(in);
 			final String lineTwo = Util.getLine(in);
-			final String dotLine = Util.getLine(in);
+			Util.getLine(in); //Flush
 
 			if (lineOne.startsWith("RECIPIENT ")) {
                 try {
-                    final Maybe<UserName> recipient = Maybe.just(new UserName(lineOne.substring("RECIPIENT ".length(), lineOne.length())));
+                    final Maybe<UserName> recipient = Maybe.just(new UserName(lineOne.substring("RECIPIENT ".length())));
                     final Maybe<String> messageText = Maybe.just(lineTwo);
 
-                    //TODO: is it possible to get registered user?
-					User user = new User(username, new Password("password"));
-					final Maybe<Message> message = Maybe.just(new Message(user, recipient.force(), messageText.force()));
+                    Stored<User> sender = db.lookup(username).force();
+					final Maybe<Message> message = Maybe.just(new Message(sender.getValue(), recipient.force(), messageText.force()));
 					return message;
 				} catch (Exception e){
 					return Maybe.nothing();
