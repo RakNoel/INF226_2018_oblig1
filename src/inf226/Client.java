@@ -24,6 +24,12 @@ public class Client {
             if (args.length == 3) {
                 portNumber = Integer.parseInt(args[2]);
                 hostname = args[1];
+            } else if (args.length == 2) {
+                portNumber = 1337;
+                hostname = args[1];
+            } else {
+                portNumber = 1337;
+                hostname = "localhost";
             }
         } catch (Exception e) {
             portNumber = 1337;
