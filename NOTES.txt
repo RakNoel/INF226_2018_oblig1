@@ -1,2 +1,14 @@
 BY: Johan Schultz Åsbakk (JAA020) AND Oskar Leirvåg (OLE006)
 
+As for the Token, we simply made it supported from the server side, but the client implementation is mostly illustrative
+and is not very user friendly. BUT it will reconnect you if connection is lost and token is still valid (10 min).
+
+The way we store the tokens, and salt should probably be done better (eg base64 encode or something), and not only the
+char values. But again, this is mostly illustrative.
+
+We did not implement user deletion from DB as that was not in the tasks.
+
+To use this application you will need to generate the correct JKS, and put the name and password in the Client/Server
+classes-main methods
+
+The program will generate the DB and fill tables if they do not exist.
