@@ -16,7 +16,7 @@ public final class Token {
 	}
 
 	public Token(String token){
-		this.token = token.getBytes();
+		this.token = Base64.getDecoder().decode(token);
 	}
 
 	@Override
