@@ -287,7 +287,7 @@ public final class RequestProcessor extends Thread {
                 try {
                     final UserName username = new UserName(lineOne.substring("USER ".length()));
                     final Token token = new Token(lineTwo.substring("TOKEN ".length()));
-                    System.err.println("Login request from user: " + username);
+                    System.err.println("Login request from user: " + username + " with token " + token.stringRepresentation());
                     return Server.authenticate(username, token);
                 } catch (NothingException | Token.TokenExpiredException e) {
                     return Maybe.nothing();

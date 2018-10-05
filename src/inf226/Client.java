@@ -18,6 +18,8 @@ public class Client {
     private static int portNumber;
     static final BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
     static String hostname;
+    private static Token token;
+    private static String username;
 
     public static void main(String[] args) {
         try {
@@ -43,18 +45,40 @@ public class Client {
         System.out.println("request and validate session IDs.");
         System.out.println();
         SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-        try (final Socket socket = factory.createSocket(hostname, portNumber);
-             final BufferedReader serverIn
-                     = new BufferedReader
-                     (new InputStreamReader
-                             (socket.getInputStream()));
-             final BufferedWriter serverOut
-                     = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()))) {
-            System.out.println("Connected to server. What do you want to do?");
-            mainMenu(serverIn, serverOut);
-        } catch (IOException e) {
-            System.err.println("Connection error");
-            e.printStackTrace();
+        boolean alreadyLoggedIn = false;
+        while(true){
+            try (final Socket socket = factory.createSocket(hostname, portNumber);
+                 final BufferedReader serverIn
+                         = new BufferedReader
+                         (new InputStreamReader
+                                 (socket.getInputStream()));
+                 final BufferedWriter serverOut
+                         = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()))) {
+                if (!alreadyLoggedIn) {
+                    alreadyLoggedIn = true;
+                    //First login, ask for username/pass
+                    System.out.println("Connected to server. What do you want to do?");
+                    mainMenu(serverIn, serverOut);
+                } else {
+                    //already logged in so should have token available
+                    serverOut.write("LOGIN");
+                    serverOut.newLine();
+                    serverOut.write("USER " + username);
+                    serverOut.newLine();
+                    serverOut.write("TOKEN " + token.stringRepresentation());
+                    serverOut.newLine();
+                    serverOut.flush();
+                    userMenu(serverOut, serverIn);
+                }
+            } catch (EOFException  e){
+                alreadyLoggedIn = true;
+            }
+            catch (IOException e) {
+                System.err.println("Connection error");
+                e.printStackTrace();
+                //not logged in so server might not be started, don't attempt reconnect
+                break;
+            }
         }
     }
 
@@ -97,14 +121,14 @@ public class Client {
             }
             if (option == 1) { // LOGIN
                 System.out.print("Username: ");
-                final String username = Util.getLine(stdin);
+                username = Util.getLine(stdin);
                 System.out.print("Password: ");
                 final String password = Util.getLine(stdin);
                 login(serverOut, serverIn, username, password);
             }
             if (option == 2) { // REGISTER
                 System.out.print("Username: ");
-                final String username = Util.getLine(stdin);
+                username = Util.getLine(stdin);
                 System.out.print("Password: ");
                 final String password = Util.getLine(stdin);
                 register(serverOut, serverIn, username, password);
@@ -112,7 +136,8 @@ public class Client {
             if (option == 3) // QUIT
                 return;
         } catch (IOException e) {
-            System.err.println("Bye-bye!");
+            //let main handle reconnects
+            return;
         }
     }
 
@@ -160,7 +185,8 @@ public class Client {
                 if (option == 3) // QUIT
                     return;
             } catch (IOException e) {
-                System.err.println("Bye-bye!");
+                //let main handle reconnects
+                return;
             }
         }
     }
@@ -189,6 +215,15 @@ public class Client {
         final String response = Util.getLine(serverIn);
         System.out.println(response);
         if (response.startsWith("REGISTERED ")) {
+            serverOut.write("REQUEST TOKEN");
+            serverOut.newLine();
+            serverOut.flush();
+            String tokenReply = Util.getLine(serverIn);
+            if(tokenReply.startsWith("TOKEN ")){
+                token = new Token(tokenReply.substring("TOKEN ".length()));
+            } else {
+                System.out.println("Unable to fetch token, can't automatically login if disconnected!");
+            }
             userMenu(serverOut, serverIn);
         }
     }
@@ -216,6 +251,10 @@ public class Client {
         serverOut.flush();
         final String response = Util.getLine(serverIn);
         if (response.startsWith("LOGGED IN ")) {
+            serverOut.write("REQUEST TOKEN");
+            serverOut.newLine();
+            serverOut.flush();
+            token = new Token(Util.getLine(serverIn));
             userMenu(serverOut, serverIn);
         }
     }
