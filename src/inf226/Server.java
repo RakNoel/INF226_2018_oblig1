@@ -76,28 +76,6 @@ public class Server {
         return storage.lookup(username, token);
     }
 
-    /**
-     * Method to validate that the username is a safe string
-     *
-     * @param username Username to be sanitized
-     * @return Maybe.just(username)
-     */
-    public static Maybe<String> validateUsername(String username) {
-        boolean res = username.matches("[\\w\\d]*");
-        return (res) ? Maybe.just(username) : Maybe.nothing();
-    }
-
-    /**
-     * Method to validate that the password is a safe string
-     *
-     * @param pass Password to be sanitized
-     * @return Maybe.just(password)
-     */
-    public static Maybe<String> validatePassword(String pass) {
-        boolean res = pass.matches("[\\w\\d.,:;()\\[\\]{}<>\"'#!$%&/+*?=_|\\-]*");
-        return (res) ? Maybe.just(pass) : Maybe.nothing();
-    }
-
     public static boolean sendMessage(Message message) {
         Maybe<Stored<User>> recipient = storage.lookup(message.recipient);
         if (recipient.isNothing()) {
