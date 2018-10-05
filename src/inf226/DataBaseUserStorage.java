@@ -78,7 +78,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
             Maybe<Id> id = new Maybe<>(keytable.get(key.toString()));
             if (!id.isNothing())
                 return Maybe.just(memory.get(id.force()));
-            String query = "SELECT * FROM 'USERS' WHERE uname= ?";
+            String query = "SELECT * FROM USERS WHERE uname= ?";
             PreparedStatement statement = conn.prepareStatement(query);
             statement.setString(1, key.toString());
             ResultSet res = statement.executeQuery();
@@ -87,7 +87,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
             UserName username = new UserName(res.getString("uname"));
             Password passwd = new Password(res.getString("passwd"));
 
-            query = "SELECT * FROM 'MESSAGES' WHERE user_to= ? ORDER BY id DESC";
+            query = "SELECT * FROM MESSAGES WHERE user_to= ? ORDER BY id DESC";
             statement = conn.prepareStatement(query);
             statement.setString(1, key.toString());
             res = statement.executeQuery();
@@ -129,7 +129,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
 
     public Maybe<Stored<User>> lookup(UserName user, Token token) throws Token.TokenExpiredException {
         try {
-            String query = "SELECT * FROM 'USERS' WHERE token= ? AND uname = ?";
+            String query = "SELECT * FROM USERS WHERE token= ? AND uname = ?";
             PreparedStatement statement = conn.prepareStatement(query);
             statement.setString(1, token.toString());
             statement.setString(2, user.toString());
@@ -149,7 +149,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
 
             Password passwd = new Password(res.getString("passwd"));
 
-            query = "SELECT * FROM 'MESSAGES' WHERE user_to= ? ORDER BY id DESC";
+            query = "SELECT * FROM MESSAGES WHERE user_to= ? ORDER BY id DESC";
             statement = conn.prepareStatement(query);
             statement.setString(1, username.toString());
             res = statement.executeQuery();
@@ -173,7 +173,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
 
     public synchronized Maybe<String> getSalt(UserName key) {
         try {
-            String query = "SELECT * FROM 'USERS' WHERE uname= ?";
+            String query = "SELECT * FROM USERS WHERE uname= ?";
             PreparedStatement statement = conn.prepareStatement(query);
             statement.setString(1, key.toString());
             ResultSet res = statement.executeQuery();
