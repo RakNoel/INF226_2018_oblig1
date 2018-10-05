@@ -73,7 +73,12 @@ class UserName implements Comparable<UserName> {
     private final String username;
 
     UserName(String username) throws inf226.Maybe.NothingException {
-        this.username = Server.validateUsername(username).force();
+        boolean res = username.matches("[\\w\\d]*");
+        if (res) {
+            this.username = username;
+        }else {
+            throw new Maybe.NothingException();
+        }
     }
 
     @Override
@@ -97,7 +102,13 @@ class Password {
      * @throws inf226.Maybe.NothingException
      */
     Password(String pass, String salt) throws inf226.Maybe.NothingException {
-        String h = Server.validatePassword(pass).force();
+        String h;
+        boolean res = pass.matches("[\\w\\d.,:;()\\[\\]{}<>\"'#!$%&/+*?=_|\\-]*");
+        if (res) {
+            h = pass;
+        } else {
+            throw new Maybe.NothingException();
+        }
         h += salt;
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-512");
@@ -115,8 +126,8 @@ class Password {
         this.password = pass;
     }
 
-    Password(String pass) throws inf226.Maybe.NothingException {
-        this.password = Server.validatePassword(pass).force();
+    Password(String pass) {
+        this.password = pass;
     }
 
     public boolean equals(Password password) {

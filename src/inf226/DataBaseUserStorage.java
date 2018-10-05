@@ -8,6 +8,7 @@ import inf226.Storage.Stored;
 import java.io.IOException;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.TreeMap;
 
 /**
@@ -63,7 +64,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
     private void fillDatabase() throws SQLException {
         assert this.conn != null;
         ArrayList<String> querys = new ArrayList<>();
-        querys.add("CREATE TABLE USERS (uname Varchar(30) PRIMARY KEY, passwd Varchar(50), salt char(50));");
+        querys.add("CREATE TABLE USERS (uname Varchar(30) PRIMARY KEY, passwd Varchar(50), salt char(50), token char(16), token_expiry_date TIMESTAMP);");
         querys.add("CREATE TABLE MESSAGES(id INTEGER PRIMARY KEY ASC,user_to Varchar(30),user_from Varchar(30),msg TEXT,FOREIGN KEY(user_to) REFERENCES USERS(uname),FOREIGN KEY(user_from) REFERENCES USERS(uname));");
 
         for (String q : querys) {
@@ -77,36 +78,94 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
             Maybe<Id> id = new Maybe<>(keytable.get(key.toString()));
             if (!id.isNothing())
                 return Maybe.just(memory.get(id.force()));
-            else {
-                String query = "SELECT * FROM 'USERS' WHERE uname= ?";
-                PreparedStatement statement = conn.prepareStatement(query);
-                statement.setString(1, key.toString());
-                ResultSet res = statement.executeQuery();
+            String query = "SELECT * FROM USERS WHERE uname= ?";
+            PreparedStatement statement = conn.prepareStatement(query);
+            statement.setString(1, key.toString());
+            ResultSet res = statement.executeQuery();
 
-                String salt = res.getString("salt");
-                UserName username = new UserName(res.getString("uname"));
-                Password passwd = new Password(res.getString("passwd"));
+            String salt = res.getString("salt");
+            UserName username = new UserName(res.getString("uname"));
+            Password passwd = new Password(res.getString("passwd"));
 
-                ImmutableLinkedList<Message> messages = new ImmutableLinkedList<>();
-                query = "SELECT * FROM 'MESSAGES' WHERE user_to= ? ORDER BY id DESC";
-                statement = conn.prepareStatement(query);
-                statement.setString(1, key.toString());
-                res = statement.executeQuery();
+            query = "SELECT * FROM MESSAGES WHERE user_to= ? ORDER BY id DESC";
+            statement = conn.prepareStatement(query);
+            statement.setString(1, key.toString());
+            res = statement.executeQuery();
 
-                User recipientUser = new User(username, passwd, salt);
+            User recipientUser = new User(username, passwd, salt);
 
-                while (res.next()) {
-                    String sender = res.getString("user_from");
-                    String message = res.getString("msg");
-                    Message h = new Message(new User(new UserName(sender), new Password("123"), ""), username, message);
-                    recipientUser = recipientUser.addMessage(h);
-                }
-
-                Stored<User> stored = new Stored<>(id_generator, recipientUser);
-                memory.put(stored.id(), stored);
-                keytable.put(stored.getValue().getName().toString(), stored.id());
-                return Maybe.just(stored);
+            while (res.next()) {
+                String sender = res.getString("user_from");
+                String message = res.getString("msg");
+                Message h = new Message(new User(new UserName(sender), new Password("1234"), ""), username, message);
+                recipientUser = recipientUser.addMessage(h);
             }
+
+            Stored<User> stored = new Stored<>(id_generator, recipientUser);
+            memory.put(stored.id(), stored);
+            keytable.put(stored.getValue().getName().toString(), stored.id());
+            return Maybe.just(stored);
+        } catch (SQLException | Message.Invalid | inf226.Maybe.NothingException e) {
+            return Maybe.nothing();
+        }
+    }
+
+    public boolean insertToken(Token token, User user, int TTL) throws IOException {
+        String query = "UPDATE USERS SET token = ?, token_expiry_date = ? WHERE uname = ?;";
+        try {
+            Calendar timeout = Calendar.getInstance();
+            timeout.add(Calendar.SECOND, TTL);
+
+            PreparedStatement statement = conn.prepareStatement(query);
+            statement.setString(1, token.toString());
+            statement.setString(2, new Timestamp(timeout.getTimeInMillis()).toString());
+            statement.setString(3, user.getName().toString());
+            statement.execute();
+            return true;
+        } catch (SQLException e) {
+            throw new IOException("Unable to write user to DB");
+        }
+    }
+
+    public Maybe<Stored<User>> lookup(UserName user, Token token) throws Token.TokenExpiredException {
+        try {
+            String query = "SELECT * FROM USERS WHERE token= ? AND uname = ?";
+            PreparedStatement statement = conn.prepareStatement(query);
+            statement.setString(1, token.toString());
+            statement.setString(2, user.toString());
+            ResultSet res = statement.executeQuery();
+
+            Timestamp ts = res.getTimestamp("token_expiry_date");
+            if (ts.before(new Timestamp(System.currentTimeMillis()))) {
+                throw new Token.TokenExpiredException();
+            }
+
+            String salt = res.getString("salt");
+            UserName username = new UserName(res.getString("uname"));
+
+            Maybe<Id> id = new Maybe<>(keytable.get(username.toString()));
+            if (!id.isNothing())
+                return Maybe.just(memory.get(id.force()));
+
+            Password passwd = new Password(res.getString("passwd"));
+
+            query = "SELECT * FROM MESSAGES WHERE user_to= ? ORDER BY id DESC";
+            statement = conn.prepareStatement(query);
+            statement.setString(1, username.toString());
+            res = statement.executeQuery();
+
+            User recipientUser = new User(username, passwd, salt);
+
+            while (res.next()) {
+                String sender = res.getString("user_from");
+                String message = res.getString("msg");
+                Message h = new Message(new User(new UserName(sender), new Password(""), ""), username, message);
+                recipientUser = recipientUser.addMessage(h);
+            }
+
+            Stored<User> stored = new Stored<>(id_generator, recipientUser);
+            memory.put(stored.id(), stored);
+            return Maybe.just(stored);
         } catch (SQLException | Message.Invalid | inf226.Maybe.NothingException e) {
             return Maybe.nothing();
         }
@@ -114,7 +173,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
 
     public synchronized Maybe<String> getSalt(UserName key) {
         try {
-            String query = "SELECT * FROM 'USERS' WHERE uname= ?";
+            String query = "SELECT * FROM USERS WHERE uname= ?";
             PreparedStatement statement = conn.prepareStatement(query);
             statement.setString(1, key.toString());
             ResultSet res = statement.executeQuery();

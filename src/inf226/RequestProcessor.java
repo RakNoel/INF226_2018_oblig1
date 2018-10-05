@@ -132,7 +132,7 @@ public final class RequestProcessor extends Thread {
 
 	    	if(requestType.equals("REQUEST TOKEN")) {
 	    		try {
-					final Token token = Server.createToken(user.force()).force();
+					final Token token = Server.createToken(user.force(), 600).force();
 					out.write("TOKEN " + token.stringRepresentation());
 				} catch (NothingException e) {
 					out.write("FAILED");
@@ -281,6 +281,15 @@ public final class RequestProcessor extends Thread {
                     System.err.println("Login request from user: " + username);
                     return Server.authenticate(username, password);
                 } catch (NothingException e) {
+                    return Maybe.nothing();
+                }
+            } else if (lineOne.startsWith("USER ") && lineTwo.startsWith("TOKEN ")) {
+                try {
+                    final UserName username = new UserName(lineOne.substring("USER ".length()));
+                    final Token token = new Token(lineTwo.substring("TOKEN ".length()));
+                    System.err.println("Login request from user: " + username + " with token " + token.stringRepresentation());
+                    return Server.authenticate(username, token);
+                } catch (NothingException | Token.TokenExpiredException e) {
                     return Maybe.nothing();
                 }
             } else {

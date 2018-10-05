@@ -17,7 +17,7 @@ import java.security.NoSuchAlgorithmException;
  * @author INF226
  */
 public class Server {
-    private static final int portNumber = 1337;
+    private static int portNumber = 1337;
     private static final DataBaseUserStorage storage = DataBaseUserStorage.getInstance();
 
     /**
@@ -53,36 +53,30 @@ public class Server {
         }
     }
 
-    public static Maybe<Token> createToken(Stored<User> user) {
-        // TODO: Implement token creation
-        return Maybe.nothing();
-    }
-
-    public static Maybe<Stored<User>> authenticate(String username, Token token) {
-        // TODO: Implement user authentication
-        return Maybe.nothing();
+    /**
+     * Method that generates a token for the user
+     * @param user
+     * @param TTL Time to live for token in seconds.
+     * @return Maybe(token) saved if successful
+     */
+    public static Maybe<Token> createToken(Stored<User> user, int TTL) {
+        Token token = new Token();
+        try {
+            return (storage.insertToken(token, user.getValue(), TTL)) ? Maybe.just(token) : Maybe.nothing();
+        } catch (IOException e) {
+            return Maybe.nothing();
+        }
     }
 
     /**
-     * Method to validate that the username is a safe string
-     *
-     * @param username Username to be sanitized
-     * @return Maybe.just(username)
+     * Authenticationmethod with the token and username instead of password.
+     * @param username Username of user to auth.
+     * @param token The given token which whould be stored for that user
+     * @return Maybe(User) if the token mathches the given username
+     * @throws Token.TokenExpiredException if token is too old(expired)
      */
-    public static Maybe<String> validateUsername(String username) {
-        boolean res = username.matches("[\\w\\d]*");
-        return (res) ? Maybe.just(username) : Maybe.nothing();
-    }
-
-    /**
-     * Method to validate that the password is a safe string
-     *
-     * @param pass Password to be sanitized
-     * @return Maybe.just(password)
-     */
-    public static Maybe<String> validatePassword(String pass) {
-        boolean res = pass.matches("[\\w\\d.,:;()\\[\\]{}<>\"'#!$%&/+*?=_|\\-]*");
-        return (res) ? Maybe.just(pass) : Maybe.nothing();
+    public static Maybe<Stored<User>> authenticate(UserName username, Token token) throws Token.TokenExpiredException {
+        return storage.lookup(username, token);
     }
 
     public static boolean sendMessage(Message message) {
@@ -113,10 +107,15 @@ public class Server {
         return Maybe.nothing();
     }
 
-    /**
-     * @param args TODO: Parse args to get port number
-     */
     public static void main(String[] args) {
+        if (args.length > 0){
+            try{
+                portNumber = Integer.parseInt(args[2]);
+            }catch (Exception e){
+                portNumber = 1337;
+            }
+        }
+
         System.setProperty("javax.net.ssl.keyStore", "inf226.jks");
         System.setProperty("javax.net.ssl.keyStorePassword", "lengdeslaarkompleksitet");
 
