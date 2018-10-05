@@ -283,6 +283,15 @@ public final class RequestProcessor extends Thread {
                 } catch (NothingException e) {
                     return Maybe.nothing();
                 }
+            } else if (lineOne.startsWith("USER ") && lineTwo.startsWith("TOKEN ")) {
+                try {
+                    final UserName username = new UserName(lineOne.substring("USER ".length()));
+                    final Token token = new Token(lineTwo.substring("TOKEN ".length()));
+                    System.err.println("Login request from user: " + username);
+                    return Server.authenticate(username, token);
+                } catch (NothingException | Token.TokenExpiredException e) {
+                    return Maybe.nothing();
+                }
             } else {
                 return Maybe.nothing();
             }
