@@ -136,7 +136,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
             ResultSet res = statement.executeQuery();
 
             Timestamp ts = res.getTimestamp("token_expiry_date");
-            if (ts.after(new Timestamp(System.currentTimeMillis()))) {
+            if (ts.before(new Timestamp(System.currentTimeMillis()))) {
                 throw new Token.TokenExpiredException();
             }
 
