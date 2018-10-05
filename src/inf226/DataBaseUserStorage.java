@@ -114,7 +114,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
         String query = "UPDATE USERS SET token = ?, token_expiry_date = ? WHERE uname = ?;";
         try {
             Calendar now = Calendar.getInstance();
-            now.add(Calendar.MINUTE, TTL);
+            now.add(Calendar.SECOND, TTL);
 
             PreparedStatement statement = conn.prepareStatement(query);
             statement.setString(1, token.toString());
