@@ -113,12 +113,12 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
     public boolean insertToken(Token token, User user, int TTL) throws IOException {
         String query = "UPDATE USERS SET token = ?, token_expiry_date = ? WHERE uname = ?;";
         try {
-            Calendar now = Calendar.getInstance();
-            now.add(Calendar.SECOND, TTL);
+            Calendar timeout = Calendar.getInstance();
+            timeout.add(Calendar.SECOND, TTL);
 
             PreparedStatement statement = conn.prepareStatement(query);
             statement.setString(1, token.toString());
-            statement.setString(2, new Timestamp(now.getTimeInMillis()).toString());
+            statement.setString(2, new Timestamp(timeout.getTimeInMillis()).toString());
             statement.setString(3, user.getName().toString());
             statement.execute();
             return true;
@@ -136,7 +136,7 @@ public class DataBaseUserStorage implements KeyedStorage<UserName, User> {
             ResultSet res = statement.executeQuery();
 
             Timestamp ts = res.getTimestamp("token_expiry_date");
-            if (ts.before(new Timestamp(System.currentTimeMillis()))) {
+            if (ts.after(new Timestamp(System.currentTimeMillis()))) {
                 throw new Token.TokenExpiredException();
             }
 
